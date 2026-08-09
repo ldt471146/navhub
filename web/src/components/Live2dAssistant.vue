@@ -562,20 +562,7 @@ onUnmounted(() => {
             </div>
             <div v-for="(m, i) in chatMsgs" :key="i" class="l2d-chat__msg" :class="m.role">
                 <span v-if="m.thinking" class="l2d-chat__bubble thinking">{{ m.text }}</span>
-                <span v-else class="l2d-chat__bubble">
-                  <span>{{ m.text }}</span>
-                <!-- 推荐网站卡片 -->
-                <span v-if="m.sites && m.sites.length" class="l2d-chat__sites">
-                  <a v-for="(s, j) in m.sites" :key="j" class="l2d-chat__site" :href="s.url" target="_blank" rel="noopener">
-                    <img class="l2d-chat__site-icon" :src="'https://icons.duckduckgo.com/ip3/' + (() => { try { return new URL(s.url).hostname } catch { return '' } })() + '.ico'" loading="lazy" @error="$event.target.style.visibility = 'hidden'" />
-                    <span class="l2d-chat__site-body">
-                      <span class="l2d-chat__site-title">{{ s.title }}</span>
-                      <span class="l2d-chat__site-desc">{{ s.desc }}</span>
-                    </span>
-                    <span class="l2d-chat__site-go">↗</span>
-                  </a>
-                </span>
-              </span>
+                <span v-else class="l2d-chat__bubble" style="white-space: pre-wrap;">{{ m.text }}</span>
             </div>
           </div>
           <div class="l2d-chat__input">
@@ -936,64 +923,6 @@ onUnmounted(() => {
   50% { opacity: 1; }
 }
 
-/* 推荐网站卡片 */
-.l2d-chat__sites {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  width: 100%;
-}
-.l2d-chat__site {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.l2d-chat__site:hover {
-  border-color: var(--primary);
-  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.12);
-}
-.l2d-chat__site-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  object-fit: contain;
-  background: var(--bg-muted);
-  padding: 2px;
-}
-.l2d-chat__site-body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-.l2d-chat__site-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.l2d-chat__site-desc {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.l2d-chat__site-go {
-  color: var(--primary);
-  font-size: 12px;
-  flex-shrink: 0;
-}
 .l2d-chat__input {
   display: flex;
   gap: 6px;
