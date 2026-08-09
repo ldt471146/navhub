@@ -106,13 +106,30 @@ async function aiReply(text) {
   chatBusy.value = true
   working.value = true
   chatHistory.value.push({ role: 'user', content: text })
+  chatMsgs.value.push({ role: 'bot', text: '思考中…', thinking: true })
   try {
     const r = await api.chat(text, chatHistory.value.slice(0, -1))
     chatHistory.value.push({ role: 'assistant', content: r.reply })
-    pushBot(r.reply, r.sites)
+    // 替换思考中的气泡为真实回复
+    const last = chatMsgs.value[chatMsgs.value.length - 1]
+    if (last && last.thinking) {
+      last.text = r.reply
+      last.sites = r.sites || []
+      last.thinking = false
+    } else {
+      pushBot(r.reply, r.sites)
+    }
+    say(r.reply)
     randomMotion()
   } catch (e) {
-    pushBot('哎呀，AI 暂时联系不上，等会儿再找我吧～')
+    const last = chatMsgs.value[chatMsgs.value.length - 1]
+    if (last && last.thinking) {
+      last.text = '哎呀，AI 暂时联系不上，等会儿再找我吧～'
+      last.thinking = false
+    } else {
+      pushBot('哎呀，AI 暂时联系不上，等会儿再找我吧～')
+    }
+    say('哎呀，AI 暂时联系不上，等会儿再找我吧～')
   } finally {
     chatBusy.value = false
     working.value = false
@@ -544,8 +561,9 @@ onUnmounted(() => {
               </div>
             </div>
             <div v-for="(m, i) in chatMsgs" :key="i" class="l2d-chat__msg" :class="m.role">
-              <span class="l2d-chat__bubble">
-                <span>{{ m.text }}</span>
+                <span v-if="m.thinking" class="l2d-chat__bubble thinking">{{ m.text }}</span>
+                <span v-else class="l2d-chat__bubble">
+                  <span>{{ m.text }}</span>
                 <!-- 推荐网站卡片 -->
                 <span v-if="m.sites && m.sites.length" class="l2d-chat__sites">
                   <a v-for="(s, j) in m.sites" :key="j" class="l2d-chat__site" :href="s.url" target="_blank" rel="noopener">
@@ -861,12 +879,13 @@ onUnmounted(() => {
   cursor: ns-resize;
 }
 
-/* 聊天 */
+/* 聊天区：弹性填充面板高度，消息可滚动 */
 .l2d-chat {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 180px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 2px;
 }
@@ -904,6 +923,17 @@ onUnmounted(() => {
   background: var(--primary);
   color: var(--primary-foreground);
   border-top-right-radius: 2px;
+}
+
+/* 思考中气泡：三点跳动 */
+.l2d-chat__bubble.thinking {
+  color: var(--text-tertiary);
+  font-style: italic;
+  animation: l2d-think-pulse 1.2s ease-in-out infinite;
+}
+@keyframes l2d-think-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }
 
 /* 推荐网站卡片 */
@@ -967,6 +997,9 @@ onUnmounted(() => {
 .l2d-chat__input {
   display: flex;
   gap: 6px;
+  margin-top: auto; /* 锚定面板底部，不留空白 */
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 .l2d-chat__input .input { flex: 1; }
 

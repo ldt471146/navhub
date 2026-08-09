@@ -153,12 +153,9 @@ def chat(message: str, history: list[dict], sites: list[dict]) -> dict:
         return {"reply": "哎呀，AI 没配置好，暂时只能陪你唠嗑～", "sites": []}
 
     site_lines = []
-    for s in sites[:120]:
-        desc = (s.get("description") or "").strip()[:40]
-        tags = (s.get("tags") or "").strip()
-        site_lines.append(
-            f"- {s.get('category_name') or '未分类'} | {s.get('title')} | {desc} | {s.get('url')} | {tags}"
-        )
+    for s in sites[:150]:
+        # 只带标题+URL，不塞描述/标签（token 少、响应快）
+        site_lines.append(f"- {s.get('category_name') or '未分类'} | {s.get('title')} | {s.get('url')}")
     if not site_lines:
         site_lines.append("（收藏还是空的）")
 
@@ -183,8 +180,9 @@ def chat(message: str, history: list[dict], sites: list[dict]) -> dict:
             json={
                 "model": AI_MODEL,
                 "messages": messages,
-                "temperature": 0.7,
-                "max_tokens": 500,
+                "temperature": 0.6,
+                "max_tokens": 300,
+                "stream": False,
             },
             timeout=30.0,
         )
