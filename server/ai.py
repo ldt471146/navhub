@@ -133,17 +133,24 @@ CHAT_SYSTEM_TEMPLATE = """你是 NavHub 导航站的二次元助手「小导航�
 {site_list}
 
 聊天规则：
-1. 用户问「推荐网站/用什么网站/哪个好」这类问题时，优先从上面的收藏里推荐，给出网站标题和 URL，并简单说明理由；收藏里没有合适的话，可以推荐常识性网站并说明不在收藏里。
+1. 用户问「推荐网站/用什么网站/哪个好/看xx用什么」这类问题时，优先从上面的收藏里推荐。
 2. 用户问导航相关的问题（分类、标签、怎么找网站）也可以回答。
 3. 其他闲聊随意发挥，但要简短（不超过 80 字），语气可爱。
-4. 不要编造收藏里不存在的 URL 细节，不要输出 markdown 表格。"""
+4. 不要编造收藏里不存在的 URL 细节，不要输出 markdown 表格。
+
+【推荐类问题的输出格式（重要）】
+当且仅当用户请求推荐网站时，回复必须以 JSON 格式输出，不要任何其他文字，格式：
+{{"sites": [{{"title": "网站标题", "url": "完整URL", "desc": "一句话理由"}}, ...]}}
+- sites 数组 1-4 个，全部来自上面收藏列表，url 必须是收藏里的真实 URL
+- 如果收藏里没有合适的，sites 可以为空数组，改为用普通文字回复并说明"""
 
 
-def chat(message: str, history: list[dict], sites: list[dict]) -> str:
-    """AI 聊天。history: [{"role": "user"|"assistant", "content": str}, ...]（不含本次消息）"""
+def chat(message: str, history: list[dict], sites: list[dict]) -> dict:
+    """AI 聊天。history: [{"role": "user"|"assistant", "content": str}, ...]（不含本次消息）
+    返回 {"reply": str, "sites": [...]}，sites 为推荐网站列表（可能为空）。"""
     api_key = _load_api_key()
     if not api_key:
-        return "哎呀，AI 没配置好，暂时只能陪你唠嗑～"
+        return {"reply": "哎呀，AI 没配置好，暂时只能陪你唠嗑～", "sites": []}
 
     site_lines = []
     for s in sites[:120]:
@@ -177,12 +184,33 @@ def chat(message: str, history: list[dict], sites: list[dict]) -> str:
                 "model": AI_MODEL,
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 400,
+                "max_tokens": 500,
             },
             timeout=30.0,
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]
-        return (content or "").strip() or "……我走神了，再说一遍？"
+        content = (content or "").strip()
+        if not content:
+            return {"reply": "……我走神了，再说一遍？", "sites": []}
+        # 尝试解析 JSON 推荐
+        try:
+            data = json.loads(content)
+            if isinstance(data, dict) and isinstance(data.get("sites"), list):
+                valid = {s.get("url") for s in sites}
+                recs = []
+                for item in data["sites"][:4]:
+                    url = (item.get("url") or "").strip()
+                    if url in valid:
+                        recs.append({
+                            "title": (item.get("title") or "").strip() or url,
+                            "url": url,
+                            "desc": (item.get("desc") or "").strip(),
+                        })
+                if recs:
+                    return {"reply": "给你找到几个收藏里的好去处～", "sites": recs}
+            return {"reply": content, "sites": []}
+        except json.JSONDecodeError:
+            return {"reply": content, "sites": []}
     except Exception as e:
-        return f"哎呀，AI 暂时走神了（{type(e).__name__}），等会儿再找我吧～"
+        return {"reply": f"哎呀，AI 暂时走神了（{type(e).__name__}），等会儿再找我吧～", "sites": []}

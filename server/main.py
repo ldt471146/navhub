@@ -256,7 +256,7 @@ def chat(body: ChatIn, session: str | None = Cookie(default=None)):
     for s in sites:
         s["category_name"] = cats.get(s.get("category_id"))
     reply = ai.chat(body.message.strip()[:500], body.history or [], sites)
-    return {"reply": reply}
+    return reply
 
 
 @app.patch("/api/notes/{nid}")
