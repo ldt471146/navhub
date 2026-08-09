@@ -1564,26 +1564,31 @@ const emojiPreset = [
   overflow: hidden;
 }
 
-/* 背景图：完整显示不裁切（contain），同色底填充空白 */
+/* 背景图：cover 铺满不留白 */
 .login-bg {
   position: absolute;
   inset: 0;
-  background: #EFE9DF url('./assets/login-bg.png') center/contain no-repeat;
+  background: url('./assets/login-bg.png') center/cover no-repeat;
   z-index: 0;
+  animation: login-zoom 24s ease-in-out infinite alternate;
+}
+@keyframes login-zoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
 }
 [data-theme="dark"] .login-bg {
-  background: #17141C url('./assets/login-bg.png') center/contain no-repeat;
+  filter: brightness(0.9);
 }
 
-/* 柔和遮罩：保证登录框清晰可读（图偏浅色，遮罩轻一些） */
+/* 柔和遮罩：保证登录框清晰可读 */
 .login-mask {
   position: absolute;
   inset: 0;
-  background: rgba(20, 16, 28, 0.18);
+  background: linear-gradient(180deg, rgba(20, 16, 28, 0.25) 0%, rgba(20, 16, 28, 0.10) 45%, rgba(20, 16, 28, 0.35) 100%);
   z-index: 1;
 }
 [data-theme="dark"] .login-mask {
-  background: rgba(5, 4, 10, 0.42);
+  background: linear-gradient(180deg, rgba(5, 4, 10, 0.45) 0%, rgba(5, 4, 10, 0.25) 45%, rgba(5, 4, 10, 0.5) 100%);
 }
 
 .login-card {
