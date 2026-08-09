@@ -1,6 +1,7 @@
 """NavHub API 入口。"""
 import json
 import os
+import time
 from pathlib import Path
 
 from fastapi import Cookie, FastAPI, HTTPException, Request
@@ -65,6 +66,7 @@ class SitePatch(BaseModel):
     favicon: str | None = None
     tags: str | None = None
     sort_order: int | None = None
+    pinned: bool | None = None
 
 
 class ClassifyIn(BaseModel):
@@ -194,6 +196,7 @@ def update_site(sid: int, body: SitePatch, session: str | None = Cookie(default=
             favicon=body.favicon,
             tags=body.tags,
             sort_order=body.sort_order,
+            pinned=body.pinned,
         )
     except Exception:
         raise HTTPException(status_code=400, detail="URL 已存在，请换一个")
@@ -374,6 +377,97 @@ def weather(session: str | None = Cookie(default=None)):
         return result
     except Exception:
         return {"city": WEATHER_CITY, "error": "天气服务暂不可用"}
+
+
+# ---------- 设置（背景等 UI 偏好） ----------
+
+class SettingIn(BaseModel):
+    key: str
+    value: str
+
+
+@app.get("/api/settings")
+def get_settings(session: str | None = Cookie(default=None)):
+    require_auth(session)
+    return db.all_settings()
+
+
+@app.post("/api/settings")
+def set_setting(body: SettingIn, session: str | None = Cookie(default=None)):
+    require_admin(session)
+    db.set_setting(body.key, body.value)
+    return {"ok": True}
+
+
+# ---------- 导出 / 导入（备份与恢复） ----------
+
+@app.get("/api/export")
+def export_data(session: str | None = Cookie(default=None)):
+    require_auth(session)
+    cats = db.list_categories()
+    sites = db.list_sites()
+    notes = db.list_notes()
+    return {
+        "app": "navhub",
+        "version": 1,
+        "exported_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "categories": [{k: c[k] for k in ("id", "name", "icon", "sort_order")} for c in cats],
+        "sites": [{k: s[k] for k in ("id", "category_id", "title", "url", "description", "favicon", "tags", "pinned", "sort_order")} for s in sites],
+        "notes": [{k: n[k] for k in ("id", "content", "sort_order")} for n in notes],
+    }
+
+
+@app.post("/api/import")
+def import_data(body: dict, session: str | None = Cookie(default=None)):
+    require_admin(session)
+    # 兼容两种格式：{"data": {...}} 包装，或直接传导出结构
+    data = body.get("data") if isinstance(body, dict) and "data" in body else body
+    data = data or {}
+    # 模式：合并导入（不覆盖已有）
+    result = {"categories": 0, "sites": 0, "notes": 0}
+
+    # 1) 分类（同名跳过）
+    cat_map = {}  # 旧 id -> 新 id
+    for c in data.get("categories", []):
+        name = (c.get("name") or "").strip()
+        if not name:
+            continue
+        exist = [x for x in db.list_categories() if x["name"] == name]
+        if exist:
+            cat_map[c.get("id")] = exist[0]["id"]
+        else:
+            new_c = db.create_category(name, c.get("icon", ""))
+            cat_map[c.get("id")] = new_c["id"]
+            result["categories"] += 1
+
+    # 2) 网站（URL 重复跳过）
+    for s in data.get("sites", []):
+        url = (s.get("url") or "").strip()
+        if not url:
+            continue
+        try:
+            db.create_site(
+                cat_map.get(s.get("category_id")),
+                s.get("title") or url,
+                url,
+                s.get("description", ""),
+                s.get("favicon", ""),
+                s.get("tags", ""),
+            )
+            result["sites"] += 1
+        except Exception:
+            continue  # URL 已存在
+
+    # 3) 便签（按内容去重）
+    exist_contents = {n["content"].strip() for n in db.list_notes()}
+    for n in data.get("notes", []):
+        content = (n.get("content") or "").strip()
+        if content and content not in exist_contents:
+            db.create_note(content)
+            exist_contents.add(content)
+            result["notes"] += 1
+
+    return result
 
 
 # ---------- 前端静态文件 ----------

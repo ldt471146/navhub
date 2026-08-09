@@ -36,6 +36,7 @@ def init_db() -> None:
                 description TEXT DEFAULT '',
                 favicon     TEXT DEFAULT '',
                 tags        TEXT DEFAULT '',
+                pinned      INTEGER DEFAULT 0,
                 sort_order  INTEGER DEFAULT 0,
                 created_at  TEXT DEFAULT (datetime('now')),
                 FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
@@ -57,6 +58,9 @@ def init_db() -> None:
         cols = [r[1] for r in conn.execute("PRAGMA table_info(sites)").fetchall()]
         if "tags" not in cols:
             conn.execute("ALTER TABLE sites ADD COLUMN tags TEXT DEFAULT ''")
+        # 迁移：老库补 pinned 列
+        if "pinned" not in cols:
+            conn.execute("ALTER TABLE sites ADD COLUMN pinned INTEGER DEFAULT 0")
         # 迁移：老库补 notes.sort_order 列
         ncols = [r[1] for r in conn.execute("PRAGMA table_info(notes)").fetchall()]
         if ncols and "sort_order" not in ncols:
@@ -152,7 +156,7 @@ def list_sites(category_id: int | None = None, tag: str | None = None) -> list[d
         args.append(f"%,{tag.strip()},%")
     if conds:
         sql += " WHERE " + " AND ".join(conds)
-    sql += " ORDER BY sort_order, id"
+    sql += " ORDER BY pinned DESC, sort_order, id"
     return [dict(r) for r in _q(sql, tuple(args))]
 
 
@@ -178,6 +182,7 @@ def update_site(
     favicon: str | None = None,
     tags: str | None = None,
     sort_order: int | None = None,
+    pinned: int | None = None,
 ) -> bool:
     fields, args = [], []
     if category_id is not None:
@@ -201,6 +206,9 @@ def update_site(
     if sort_order is not None:
         fields.append("sort_order = ?")
         args.append(int(sort_order))
+    if pinned is not None:
+        fields.append("pinned = ?")
+        args.append(1 if pinned else 0)
     if not fields:
         return False
     args.append(sid)
@@ -217,6 +225,11 @@ def delete_site(sid: int) -> None:
 def get_setting(key: str, default: str = "") -> str:
     rows = _q("SELECT value FROM settings WHERE key = ?", (key,))
     return rows[0]["value"] if rows else default
+
+
+def all_settings() -> dict:
+    rows = _q("SELECT key, value FROM settings")
+    return {r["key"]: r["value"] for r in rows}
 
 
 def set_setting(key: str, value: str) -> None:

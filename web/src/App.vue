@@ -3,6 +3,131 @@ import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import { api, ApiError } from './api'
 import MonitorView from './components/MonitorView.vue'
 
+// ---------- 设置面板 ----------
+const settingsOpen = ref(false)
+const settings = ref({})
+const bgMode = ref('default') // default | custom | color
+const bgUrl = ref('')
+const bgColor = ref('#0F172A')
+const importing = ref(false)
+
+function openSettings() {
+  settingsOpen.value = true
+}
+
+async function loadSettings() {
+  try {
+    settings.value = await api.getSettings()
+    bgMode.value = settings.value.bg_mode || 'default'
+    bgUrl.value = settings.value.bg_url || ''
+    bgColor.value = settings.value.bg_color || '#0F172A'
+  } catch {}
+}
+
+async function saveBg() {
+  try {
+    await api.setSetting('bg_mode', bgMode.value)
+    if (bgMode.value === 'custom') await api.setSetting('bg_url', bgUrl.value.trim())
+    if (bgMode.value === 'color') await api.setSetting('bg_color', bgColor.value)
+    applyBg()
+    showToast('背景已保存 ✓', 'info')
+  } catch (e) {
+    showToast(e.message, 'error')
+  }
+}
+
+function applyBg() {
+  const root = document.documentElement
+  const mode = bgMode.value
+  if (mode === 'custom' && bgUrl.value.trim()) {
+    root.style.setProperty('--app-bg-image', `url(${bgUrl.value.trim()})`)
+    root.style.setProperty('--app-bg-color', 'var(--bg-app)')
+  } else if (mode === 'color') {
+    root.style.setProperty('--app-bg-image', 'none')
+    root.style.setProperty('--app-bg-color', bgColor.value)
+  } else {
+    root.style.setProperty('--app-bg-image', 'none')
+    root.style.setProperty('--app-bg-color', 'var(--bg-app)')
+  }
+}
+
+async function exportBackup() {
+  try {
+    const data = await api.exportData()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `navhub-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+    showToast('备份已下载 ✓', 'info')
+  } catch (e) {
+    showToast(e.message, 'error')
+  }
+}
+
+async function importBackup(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  importing.value = true
+  try {
+    const text = await file.text()
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      // 尝试解析浏览器书签 HTML
+      data = parseBookmarksHtml(text)
+    }
+    const r = await api.importData(data)
+    showToast(`导入完成：分类 +${r.categories}、网站 +${r.sites}、便签 +${r.notes}`, 'info')
+    await loadAll()
+    await loadNotes()
+  } catch (err) {
+    showToast('导入失败：' + (err.message || err), 'error')
+  } finally {
+    importing.value = false
+    e.target.value = ''
+  }
+}
+
+// 解析 Netscape 书签 HTML（浏览器导出的书签）
+function parseBookmarksHtml(html) {
+  const cats = []
+  const sites = []
+  const catMap = new Map()
+  // 提取 <DT><H3>分类名</H3> 和 <DT><A HREF="url">标题</A>
+  const h3Re = /<H3[^>]*>([^<]+)<\/H3>/gi
+  const aRe = /<A HREF="([^"]+)"[^>]*>([^<]+)<\/A>/gi
+  let catId = 1
+  // 按 DOM 顺序找：H3 后面的 A 属于该分类（简化：H3 与后续 A 之间）
+  const sections = html.split(/<DT><H3/i)
+  for (let i = 0; i < sections.length; i++) {
+    const sec = sections[i]
+    const m = sec.match(/>([^<]+)<\/H3>/)
+    const links = [...sec.matchAll(aRe)]
+    if (m && links.length) {
+      const cid = catId++
+      cats.push({ id: cid, name: m[1].trim().slice(0, 20), icon: '📁' })
+      for (const l of links.slice(0, 100)) {
+        const url = l[1].trim()
+        if (url.startsWith('http')) {
+          sites.push({ id: sites.length + 1, category_id: cid, title: l[2].trim().slice(0, 60), url, description: '', tags: '' })
+        }
+      }
+    }
+  }
+  // 兜底：整页所有链接
+  if (!sites.length) {
+    const all = [...html.matchAll(aRe)]
+    for (const l of all.slice(0, 200)) {
+      const url = l[1].trim()
+      if (url.startsWith('http')) sites.push({ id: sites.length + 1, category_id: null, title: l[2].trim().slice(0, 60), url, description: '', tags: '' })
+    }
+  }
+  return { categories: cats, sites, notes: [] }
+}
+
 // ---------- 便签 ----------
 const notes = ref([])
 const noteDraft = ref('')
@@ -294,6 +419,8 @@ async function init() {
       isAdmin.value = r.role !== 'viewer'
       await loadAll()
       await loadNotes()
+      await loadSettings()
+      applyBg()
     }
   } catch {}
 }
@@ -471,6 +598,17 @@ async function autoFetchSite() {
     // 抓取失败静默，用户可以手动填
   } finally {
     siteFetching.value = false
+  }
+}
+
+// 置顶/取消置顶
+async function togglePin(s) {
+  try {
+    await api.togglePin(s.id, !s.pinned)
+    s.pinned = s.pinned ? 0 : 1
+    showToast(s.pinned ? '已置顶 ⭐' : '已取消置顶', 'info')
+  } catch (e) {
+    showToast(e.message, 'error')
   }
 }
 
@@ -1165,6 +1303,7 @@ const emojiPreset = [
       <div class="sidebar-footer">
         <button v-if="isAdmin" class="btn btn-sm" style="width: 100%; justify-content: center;" @click="openCreateCat">＋ 新建分类</button>
         <div class="sidebar-actions">
+          <button v-if="isAdmin" class="btn" @click="openSettings">⚙️ 设置</button>
           <button class="btn btn-sm" :class="{ active: view === 'notes' }" @click="view = 'notes'; closeSidebar()">📝 便签</button>
           <button class="btn btn-sm" :class="{ active: view === 'monitor' }" @click="view = 'monitor'; closeSidebar()">📊 服务器</button>
         </div>
@@ -1232,6 +1371,7 @@ const emojiPreset = [
                   v-for="s in panelSites(p.key)"
                   :key="s.id"
                   class="card site-card"
+                  :class="{ pinned: s.pinned }"
                   :draggable="isAdmin ? 'true' : 'false'"
                   @dragstart="isAdmin && onSiteDragStart(s)"
                   @dragover="isAdmin && onSiteDragOver($event, s)"
@@ -1239,6 +1379,9 @@ const emojiPreset = [
                   @click="openSite(s)"
                 >
                   <div v-if="isAdmin" class="site-card__actions">
+                    <button class="site-act-btn" :class="{ 'pin-active': s.pinned }" :title="s.pinned ? '取消置顶' : '置顶'" @click.stop="togglePin(s)">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+                    </button>
                     <button class="site-act-btn" title="编辑" @click.stop="openEditSite(s)">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     </button>
@@ -1480,6 +1623,39 @@ const emojiPreset = [
       </div>
     </div>
 
+    <!-- 设置弹窗 -->
+    <div v-if="settingsOpen" class="modal-mask" @click.self="settingsOpen = false">
+      <div class="card modal" style="max-width: 420px;">
+        <div class="modal-title">⚙️ 设置</div>
+
+        <div class="modal-label">📦 数据备份</div>
+        <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+          <button class="btn" style="flex: 1; justify-content: center;" @click="exportBackup">⬇️ 导出备份</button>
+          <label class="btn" style="flex: 1; justify-content: center; cursor: pointer;">
+            ⬆️ 导入{{ importing ? '中…' : '' }}
+            <input type="file" accept=".json,.html,.htm" style="display: none;" @change="importBackup" />
+          </label>
+        </div>
+        <div class="modal-hint" style="margin-bottom: 16px;">支持 NavHub JSON 备份 或 浏览器导出的书签 HTML（自动识别）</div>
+
+        <div class="modal-label">🎨 主页背景</div>
+        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+          <button class="btn btn-sm" :class="{ active: bgMode === 'default' }" @click="bgMode = 'default'">默认</button>
+          <button class="btn btn-sm" :class="{ active: bgMode === 'color' }" @click="bgMode = 'color'">纯色</button>
+          <button class="btn btn-sm" :class="{ active: bgMode === 'custom' }" @click="bgMode = 'custom'">图片</button>
+        </div>
+        <div v-if="bgMode === 'color'" style="margin-bottom: 10px;">
+          <input type="color" v-model="bgColor" style="width: 48px; height: 32px; border: none; background: none; cursor: pointer;" />
+        </div>
+        <div v-if="bgMode === 'custom'" style="margin-bottom: 10px;">
+          <input v-model="bgUrl" class="input" placeholder="图片 URL（https://…）" />
+        </div>
+        <button class="btn btn-primary" style="width: 100%; justify-content: center;" @click="saveBg">保存背景</button>
+
+        <button class="modal-close" @click="settingsOpen = false">✕</button>
+      </div>
+    </div>
+
     <!-- 网站弹窗 -->
     <div v-if="showSiteModal" class="modal-mask" @click.self="showSiteModal = false">
       <div class="card modal">
@@ -1685,6 +1861,10 @@ const emojiPreset = [
 .modal { width: 380px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
 .modal-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .modal-label { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.modal-hint { font-size: 11px; color: var(--text-tertiary); }
+.modal-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: var(--text-tertiary); cursor: pointer; font-size: 14px; }
+.modal-close:hover { color: var(--text-primary); }
+.modal { position: relative; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .emoji-preset {
   display: flex;

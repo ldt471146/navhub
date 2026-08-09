@@ -41,6 +41,7 @@ export const api = {
   sites: (categoryId) => req('GET', `/api/sites${categoryId != null ? `?category_id=${categoryId}` : ''}`),
   createSite: (site) => req('POST', '/api/sites', site),
   updateSite: (id, patch) => req('PATCH', `/api/sites/${id}`, patch),
+  togglePin: (id, pinned) => req('PATCH', `/api/sites/${id}`, { pinned }),
   deleteSite: (id) => req('DELETE', `/api/sites/${id}`),
   classify: (url) => req('POST', '/api/sites/ai-classify', { url }),
   fetchMeta: (url) => req('POST', '/api/sites/fetch-meta', { url }),
@@ -53,4 +54,8 @@ export const api = {
   systemStats: () => req('GET', '/api/system/stats'),
   weather: () => req('GET', '/api/weather'),
   chat: (message, history) => req('POST', '/api/chat', { message, history }),
+  exportData: () => req('GET', '/api/export'),
+  importData: (data) => req('POST', '/api/import', data),
+  getSettings: () => req('GET', '/api/settings'),
+  setSetting: (key, value) => req('POST', '/api/settings', { key, value }),
 }

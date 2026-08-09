@@ -12,7 +12,11 @@ html, body {
 
 body {
   font-family: var(--font-ui);
-  background: var(--bg-app);
+  background: var(--app-bg-color, var(--bg-app));
+  background-image: var(--app-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   color: var(--text-primary);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
@@ -680,6 +684,12 @@ input, textarea {
 
 .site-act-btn:hover { background: var(--bg-hover); }
 .site-act-btn.danger:hover { color: var(--text-danger); border-color: var(--text-danger); }
+.site-act-btn.pin-active { color: #F59E0B; border-color: #F59E0B; background: rgba(245, 158, 11, 0.08); }
+
+/* 置顶卡片：左上角金色小标 */
+.site-card.pinned {
+  box-shadow: inset 0 2px 0 rgba(245, 158, 11, 0.55);
+}
 
 .site-card .title {
   font-size: 13px;
