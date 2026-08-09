@@ -1,4 +1,4 @@
-"""AI 自动分类：调用 DeepSeek（opencode 中转）把 URL 归入已有分类。"""
+"""AI 自动分类：调用 OpenAI 兼容接口把 URL 归入已有分类。"""
 import json
 import os
 import re
@@ -6,7 +6,6 @@ from pathlib import Path
 
 import httpx
 
-# 默认复用 Hermes 的 opencode 中转配置；可用环境变量覆盖
 # 默认 OpenAI 兼容端点；部署时用 NAVHUB_AI_BASE_URL / NAVHUB_AI_API_KEY 覆盖（见 deploy/navhub.service.example）
 AI_BASE_URL = os.environ.get("NAVHUB_AI_BASE_URL", "https://api.openai.com/v1")
 AI_MODEL = os.environ.get("NAVHUB_AI_MODEL", "deepseek-chat")
