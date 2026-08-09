@@ -1087,6 +1087,8 @@ const emojiPreset = [
 <template>
   <!-- 登录页 -->
   <div v-if="!loggedIn" class="login-wrap">
+    <div class="login-bg"></div>
+    <div class="login-mask"></div>
     <div class="card login-card">
       <div class="login-logo">🧭</div>
       <div class="login-title">NavHub</div>
@@ -1558,17 +1560,55 @@ const emojiPreset = [
   align-items: center;
   justify-content: center;
   background: var(--bg-app);
+  position: relative;
+  overflow: hidden;
 }
+
+/* 背景图：完整显示不裁切（contain），同色底填充空白 */
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background: #EFE9DF url('./assets/login-bg.png') center/contain no-repeat;
+  z-index: 0;
+}
+[data-theme="dark"] .login-bg {
+  background: #17141C url('./assets/login-bg.png') center/contain no-repeat;
+}
+
+/* 柔和遮罩：保证登录框清晰可读（图偏浅色，遮罩轻一些） */
+.login-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 28, 0.18);
+  z-index: 1;
+}
+[data-theme="dark"] .login-mask {
+  background: rgba(5, 4, 10, 0.42);
+}
+
 .login-card {
   width: 340px;
   padding: 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 32px rgba(30, 20, 10, 0.18), 0 2px 8px rgba(30, 20, 10, 0.08);
 }
 .login-logo { font-size: 40px; }
 .login-title { font-size: 22px; font-weight: 600; margin-top: 8px; color: var(--text-primary); }
 .login-error { color: var(--text-danger); font-size: 12px; text-align: center; }
+
+/* 深色模式下登录卡片适配 */
+[data-theme="dark"] .login-card {
+  background: rgba(24, 26, 32, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
 
 /* 侧栏 */
 .theme-toggle {
