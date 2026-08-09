@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    :root {
+      --bg: #F4F5F7;
+      --surface: #FFFFFF;
+      --border: rgba(0,0,0,0.08);
+      --text: #1C1C1E;
+      --text-sec: #636366;
+      --text-ter: #8E8E93;
+      --primary: #007AFF;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px 8px;
+    }
+    .header .logo { font-size: 18px; }
+    .header .title { font-weight: 600; font-size: 14px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin: 0 10px 10px;
+      padding: 12px;
+    }
+    .url { font-size: 12px; color: var(--text-ter); word-break: break-all; margin-top: 4px; }
+    .status {
+      display: none;
+      padding: 10px;
+      font-size: 12px;
+      border-radius: 8px;
+      margin: 0 10px 10px;
+    }
+    .status.loading { display: block; background: rgba(0,122,255,0.08); color: var(--primary); }
+    .status.ok { display: block; background: rgba(52,199,89,0.1); color: #1d9e43; }
+    .status.err { display: block; background: rgba(255,59,48,0.08); color: #d6453c; }
+    .status.hidden { display: none; }
+    button {
+      width: 100%;
+      height: 36px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; cursor: default; }
+    .foot { padding: 0 14px 12px; text-align: center; }
+    .foot a { color: var(--text-ter); font-size: 11px; text-decoration: none; }
+    .suggest {
+      display: none;
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(52,199,89,0.08);
+      border: 1px solid rgba(52,199,89,0.25);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-sec);
+    }
+    .suggest.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="logo">🧭</span>
+    <span class="title">收藏到 NavHub</span>
+  </div>
+
+  <div class="card">
+    <!-- 由 popup.js 动态填充当前标签页信息 -->
+  </div>
+
+  <div id="status" class="status hidden"></div>
+
+  <div style="padding: 0 10px;">
+    <button id="saveBtn" class="btn-primary">✨ AI 自动分类收藏</button>
+  </div>
+
+  <div id="suggest" class="suggest"></div>
+
+  <div class="foot" style="margin-top: 10px;">
+    <a href="https://nav.example.com" target="_blank">打开 NavHub</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

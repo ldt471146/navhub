@@ -1,0 +1,26 @@
+# Python
+server/.venv/
+server/__pycache__/
+server/tests/__pycache__/
+*.pyc
+
+# 数据（本地数据库，勿提交）
+server/navhub.db
+server/navhub.db-wal
+server/navhub.db-shm
+
+# 前端
+web/node_modules/
+web/dist/
+
+# 本机部署配置（含真实域名/IP，勿提交）
+deploy/nav.diecast.cloud
+deploy/wenflow-ip.bak
+deploy/navhub.service
+deploy/nginx.conf
+*.bak
+
+# 环境
+.env
+server/test_navhub.db
+web/.vscode/

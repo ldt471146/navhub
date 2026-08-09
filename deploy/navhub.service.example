@@ -1,0 +1,27 @@
+# NavHub systemd 服务示例（部署时按需修改）
+# 安装：cp navhub.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now navhub
+[Unit]
+Description=NavHub - Personal Navigation Hub
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/navhub/server
+# 请务必修改以下密码为强密码！
+Environment=NAVHUB_PASSWORD=change_me_admin
+Environment=NAVHUB_VIEWER_PASSWORD=change_me_viewer
+Environment=NAVHUB_PORT=8001
+# AI 聊天/分类：OpenAI 兼容接口（可留空禁用 AI 功能）
+# Environment=NAVHUB_AI_BASE_URL=https://your-openai-compatible-endpoint/v1
+# Environment=NAVHUB_AI_MODEL=gpt-4o-mini
+# Environment=NAVHUB_AI_API_KEY=sk-your-key
+# 天气城市坐标（open-meteo，默认香港）
+# Environment=NAVHUB_WEATHER_LAT=22.3193
+# Environment=NAVHUB_WEATHER_LON=114.1694
+# Environment=NAVHUB_WEATHER_CITY=香港
+ExecStart=/opt/navhub/server/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8001
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
