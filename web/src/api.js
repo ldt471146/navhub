@@ -58,4 +58,7 @@ export const api = {
   importData: (data) => req('POST', '/api/import', data),
   getSettings: () => req('GET', '/api/settings'),
   setSetting: (key, value) => req('POST', '/api/settings', { key, value }),
+  healthCheck: () => req('POST', '/api/health-check'),
+  clickSite: (site_id) => req('POST', '/api/sites/click', { site_id }),
+  topSites: () => req('GET', '/api/sites/top'),
 }

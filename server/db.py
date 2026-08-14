@@ -37,6 +37,9 @@ def init_db() -> None:
                 favicon     TEXT DEFAULT '',
                 tags        TEXT DEFAULT '',
                 pinned      INTEGER DEFAULT 0,
+                status      TEXT DEFAULT 'unknown',
+                status_at   TEXT DEFAULT '',
+                clicks      INTEGER DEFAULT 0,
                 sort_order  INTEGER DEFAULT 0,
                 created_at  TEXT DEFAULT (datetime('now')),
                 FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
@@ -61,6 +64,13 @@ def init_db() -> None:
         # 迁移：老库补 pinned 列
         if "pinned" not in cols:
             conn.execute("ALTER TABLE sites ADD COLUMN pinned INTEGER DEFAULT 0")
+        # 迁移：老库补 status / status_at / clicks 列
+        if "status" not in cols:
+            conn.execute("ALTER TABLE sites ADD COLUMN status TEXT DEFAULT 'unknown'")
+        if "status_at" not in cols:
+            conn.execute("ALTER TABLE sites ADD COLUMN status_at TEXT DEFAULT ''")
+        if "clicks" not in cols:
+            conn.execute("ALTER TABLE sites ADD COLUMN clicks INTEGER DEFAULT 0")
         # 迁移：老库补 notes.sort_order 列
         ncols = [r[1] for r in conn.execute("PRAGMA table_info(notes)").fetchall()]
         if ncols and "sort_order" not in ncols:
@@ -218,6 +228,26 @@ def update_site(
 
 def delete_site(sid: int) -> None:
     _exec("DELETE FROM sites WHERE id = ?", (sid,))
+
+
+# ---------- 死链检测 & 点击统计 ----------
+
+def set_site_status(sid: int, status: str) -> None:
+    _exec(
+        "UPDATE sites SET status = ?, status_at = datetime('now') WHERE id = ?",
+        (status, sid),
+    )
+
+
+def increment_clicks(sid: int) -> None:
+    _exec("UPDATE sites SET clicks = clicks + 1 WHERE id = ?", (sid,))
+
+
+def top_sites(limit: int = 8) -> list[dict]:
+    return [dict(r) for r in _q(
+        "SELECT * FROM sites WHERE clicks > 0 ORDER BY clicks DESC LIMIT ?",
+        (limit,),
+    )]
 
 
 # ---------- settings ----------

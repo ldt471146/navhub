@@ -1,6 +1,7 @@
 """NavHub API 入口。"""
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from pydantic import BaseModel
 
 import ai
 import auth
+import checker
 import db
 import fetch
 import sysinfo
@@ -470,6 +472,65 @@ def import_data(body: dict, session: str | None = Cookie(default=None)):
     return result
 
 
+# ---------- 死链检测 ----------
+
+_HEALTH_LOCK = threading.Lock()
+
+def _run_health_check() -> dict:
+    """执行一轮全站探测并落库，返回统计。"""
+    sites = db.list_sites()
+    results = checker.check_sites(sites)
+    ok = down = 0
+    for s in sites:
+        st = results.get(s["id"])
+        if st is None:
+            continue
+        if st == "ok":
+            ok += 1
+        else:
+            down += 1
+        db.set_site_status(s["id"], st)
+    return {"total": len(sites), "checked": len(results), "ok": ok, "down": down}
+
+
+@app.post("/api/health-check")
+def health_check(session: str | None = Cookie(default=None)):
+    require_admin(session)
+    if _HEALTH_LOCK.locked():
+        raise HTTPException(status_code=409, detail="检测正在进行中，请稍候")
+    with _HEALTH_LOCK:
+        return _run_health_check()
+
+
+def _background_health_loop(interval_hours: float = 6.0):
+    """后台定时探测（每 6 小时一轮）。"""
+    while True:
+        time.sleep(interval_hours * 3600)
+        try:
+            _run_health_check()
+        except Exception as e:
+            print(f"[navhub] 定时死链检测失败: {e}", flush=True)
+
+
+# ---------- 点击统计 ----------
+
+class ClickIn(BaseModel):
+    site_id: int
+
+
+@app.post("/api/sites/click")
+def click_site(body: ClickIn, session: str | None = Cookie(default=None)):
+    require_auth(session)
+    db.increment_clicks(body.site_id)
+    return {"ok": True}
+
+
+@app.get("/api/sites/top")
+def top_sites(session: str | None = Cookie(default=None)):
+    require_auth(session)
+    return db.top_sites(8)
+
+
 # ---------- 前端静态文件 ----------
 
 @app.get("/")
@@ -483,7 +544,29 @@ if WEB_DIST.exists():
     app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
 
 
+@app.get("/{filename}")
+def static_file(filename: str):
+    """PWA 等静态文件（manifest/sw/icon），不在 /assets 下的。"""
+    if not WEB_DIST.exists():
+        raise HTTPException(status_code=404)
+    # 防目录穿越
+    safe = Path(filename).name
+    if safe != filename:
+        raise HTTPException(status_code=404)
+    f = WEB_DIST / safe
+    if f.is_file() and safe in (
+        "manifest.webmanifest", "sw.js",
+        "icon-192.png", "icon-512.png", "apple-touch-icon.png",
+        "favicon.svg", "icons.svg", "icon.svg",
+    ):
+        return FileResponse(f)
+    raise HTTPException(status_code=404)
+
+
 if __name__ == "__main__":
     import uvicorn
 
+    threading.Thread(
+        target=_background_health_loop, daemon=True, name="navhub-health"
+    ).start()
     uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("NAVHUB_PORT", "8001")))

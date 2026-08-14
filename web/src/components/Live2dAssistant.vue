@@ -185,20 +185,27 @@ const CHATS = [
   '需要我跑一圈提提神吗？🏃',
 ]
 
-// 随机动作（丰富版）
+// 随机动作（bilibili-22 模型支持的动作组）
 function randomMotion() {
   if (!l2d || working.value) return
   const actions = [
-    () => { l2d.playMotion('flick_head') },
-    () => { l2d.playMotion('tap_body') },
-    () => { l2d.playMotion('thanking') },
-    () => { l2d.playMotion('idle-01') },
-    () => { l2d.playMotion('idle-02') },
-    () => { l2d.playMotion('idle-03') },
+    () => { playSafe('flick_head') },
+    () => { playSafe('tap_body') },
+    () => { playSafe('thanking') },
     () => { l2d.setExpression && l2d.setExpression(0) },
     () => { l2d.setExpression && l2d.setExpression(1) },
   ]
   actions[Math.floor(Math.random() * actions.length)]()
+}
+
+// 安全播放动作：模型不支持的动作组静默跳过，不报错
+function playSafe(motion) {
+  if (!l2d) return
+  try {
+    l2d.playMotion(motion)
+  } catch (e) {
+    // 动作组不存在时忽略
+  }
 }
 
 // 定时报时间/天气（每 30~45 分钟一次）
@@ -265,7 +272,7 @@ function startRun() {
     else running.value = false
   }
   requestAnimationFrame(step)
-  if (l2d) l2d.playMotion('flick_head')
+  if (l2d) playSafe('flick_head')
 }
 
 // ---------- 挂载 Live2D ----------
@@ -401,7 +408,7 @@ async function miniClassify() {
     }
     if (sug.category) {
       say(`我觉得它适合「${sug.category}」！确认后我就添加～`)
-      l2d && l2d.playMotion('thanking')
+      l2d && playSafe('thanking')
     } else if (sug.new_category) {
       say(`建议新建「${sug.new_category}」分类！确认后我就添加～`)
     } else {
@@ -444,7 +451,7 @@ async function miniConfirmSave() {
     })
     miniPhase.value = 'saved'
     say('保存好啦！🎉')
-    l2d && l2d.playMotion('thanking')
+    l2d && playSafe('thanking')
     emit('saved') // 通知主界面刷新
   } catch (e) {
     miniError.value = e.message

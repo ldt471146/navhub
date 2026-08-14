@@ -128,6 +128,27 @@ function parseBookmarksHtml(html) {
   return { categories: cats, sites, notes: [] }
 }
 
+// ---------- 热门榜 & 死链检测 ----------
+const topSites = ref([])
+const healthChecking = ref(false)
+
+async function loadTopSites() {
+  try { topSites.value = await api.topSites() } catch {}
+}
+
+async function runHealthCheck() {
+  healthChecking.value = true
+  try {
+    const r = await api.healthCheck()
+    showToast(`检测完成：${r.ok} 正常 / ${r.down} 失效`, r.down ? 'error' : 'info')
+    await loadAll()
+  } catch (e) {
+    showToast(e.message || '检测失败', 'error')
+  } finally {
+    healthChecking.value = false
+  }
+}
+
 // ---------- 便签 ----------
 const notes = ref([])
 const noteDraft = ref('')
@@ -420,6 +441,7 @@ async function init() {
       await loadAll()
       await loadNotes()
       await loadSettings()
+      await loadTopSites()
       applyBg()
     }
   } catch {}
@@ -434,6 +456,7 @@ async function doLogin() {
     isAdmin.value = r.role !== 'viewer'
     await loadAll()
     await loadNotes()
+    await loadTopSites()
   } catch (e) {
     loginError.value = e.message
   }
@@ -517,6 +540,8 @@ async function onCatDrop() {
 // ---------- 网站 ----------
 function openSite(s) {
   window.open(s.url, '_blank', 'noopener')
+  // 点击计数（异步上报，失败忽略）
+  api.clickSite(s.id).catch(() => {})
 }
 
 function openCreateSite() {
@@ -1400,7 +1425,10 @@ const emojiPreset = [
                   <div v-if="tagList(s).length" class="site-tags">
                     <span v-for="t in tagList(s)" :key="t" class="site-tag" :class="tagClass(t)" @click.stop="toggleTag(t)">#{{ t }}</span>
                   </div>
-                  <div class="meta">{{ hostOf(s.url) }} ↗</div>
+                  <div class="meta">
+                    <span v-if="s.status === 'down'" class="site-dead" title="检测于 {{ s.status_at }}">⚠️ 已失效</span>
+                    {{ hostOf(s.url) }} ↗
+                  </div>
                 </div>
               </div>
             </section>
@@ -1638,6 +1666,22 @@ const emojiPreset = [
         </div>
         <div class="modal-hint" style="margin-bottom: 16px;">支持 NavHub JSON 备份 或 浏览器导出的书签 HTML（自动识别）</div>
 
+        <div class="modal-label">🔍 网站健康</div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button v-if="isAdmin" class="btn" style="flex: 1; justify-content: center;" @click="runHealthCheck" :disabled="healthChecking">
+            {{ healthChecking ? '检测中…' : '🩺 立即检测失效网站' }}
+          </button>
+        </div>
+
+        <div v-if="topSites.length" class="modal-label" style="margin-top: 4px;">🔥 热门网站 TOP {{ Math.min(topSites.length, 5) }}</div>
+        <div v-if="topSites.length" class="top-list" style="margin-bottom: 12px;">
+          <a v-for="(t, i) in topSites.slice(0, 5)" :key="t.id" class="top-item" :href="t.url" target="_blank" rel="noopener">
+            <span class="top-rank">{{ i + 1 }}</span>
+            <span class="top-title">{{ t.title }}</span>
+            <span class="top-clicks">{{ t.clicks }} 次</span>
+          </a>
+        </div>
+
         <div class="modal-label">🎨 主页背景</div>
         <div style="display: flex; gap: 6px; margin-bottom: 10px;">
           <button class="btn btn-sm" :class="{ active: bgMode === 'default' }" @click="bgMode = 'default'">默认</button>
@@ -1790,6 +1834,41 @@ const emojiPreset = [
   background: rgba(24, 26, 32, 0.88);
   border-color: rgba(255, 255, 255, 0.1);
 }
+
+.site-dead {
+  display: inline-block;
+  font-size: 10px;
+  color: #DC2626;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 4px;
+  font-weight: 600;
+}
+
+/* 热门榜 */
+.top-list { display: flex; flex-direction: column; gap: 6px; }
+.top-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.top-item:hover { border-color: var(--primary); }
+.top-rank {
+  font-size: 12px; font-weight: 700;
+  color: var(--primary);
+  min-width: 16px; text-align: center;
+}
+.top-item:nth-child(1) .top-rank { color: #F59E0B; }
+.top-item:nth-child(2) .top-rank { color: #94A3B8; }
+.top-item:nth-child(3) .top-rank { color: #B45309; }
+.top-title { font-size: 12px; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-clicks { font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; }
 
 /* 侧栏 */
 .theme-toggle {
