@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { createWidget } from 'l2d-widget'
+import { Zap, Heart, X, MessageCircle, Tags, CheckCircle2, Target, Lightbulb, HelpCircle, Upload, Send } from 'lucide-vue-next'
 import { api } from '../api'
 
 const props = defineProps({
@@ -541,20 +542,20 @@ onUnmounted(() => {
 
     <!-- 小菜单：跑动 -->
     <div class="l2d-stage__menu">
-      <button class="l2d-menu-btn" @click.stop="startRun" title="跑动一下">🏃</button>
+      <button class="l2d-menu-btn" @click.stop="startRun" title="跑动一下"><Zap :size="16" /></button>
     </div>
 
     <!-- 处理小窗 -->
     <div v-if="panelOpen" class="l2d-panel card" :style="{ width: panelSize.w + 'px', height: panelSize.h ? panelSize.h + 'px' : undefined }">
       <div class="l2d-panel__head">
-        <span>🧡 导航助手</span>
-        <button class="l2d-panel__close" @click="panelOpen = false">✕</button>
+        <span class="l2d-panel__title"><Heart :size="13" style="color:#FF6B81; margin-right:5px;" /> 导航助手</span>
+        <button class="l2d-panel__close" @click="panelOpen = false"><X :size="14" /></button>
       </div>
 
       <!-- Tab 切换 -->
       <div class="l2d-panel__tabs">
-        <button class="l2d-tab" :class="{ active: panelTab === 'chat' }" @click="panelTab = 'chat'">💬 聊天</button>
-        <button v-if="isAdmin" class="l2d-tab" :class="{ active: panelTab === 'classify' }" @click="panelTab = 'classify'">🏷️ 分类添加</button>
+        <button class="l2d-tab" :class="{ active: panelTab === 'chat' }" @click="panelTab = 'chat'"><MessageCircle :size="13" style="margin-right:4px;" /> 聊天</button>
+        <button v-if="isAdmin" class="l2d-tab" :class="{ active: panelTab === 'classify' }" @click="panelTab = 'classify'"><Tags :size="13" style="margin-right:4px;" /> 分类添加</button>
       </div>
 
       <div class="l2d-panel__body">
@@ -591,7 +592,7 @@ onUnmounted(() => {
             <button class="btn btn-primary" @click="miniClassify" :disabled="miniBusy" style="width: 100%; justify-content: center;">
               {{ miniBusy ? '分析中…' : '帮我分类' }}
             </button>
-            <div v-if="miniPhase === 'saved'" class="l2d-panel__ok">✅ 已保存！还可以继续添加</div>
+            <div v-if="miniPhase === 'saved'" class="l2d-panel__ok"><CheckCircle2 :size="13" style="vertical-align:-2px; margin-right:4px;" /> 已保存！还可以继续添加</div>
           </template>
 
           <template v-else-if="miniPhase === 'ready' && miniResult">
@@ -603,9 +604,9 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="l2d-panel__suggest">
-              <b v-if="miniResult.suggestion.category">🎯 AI 建议：「{{ miniResult.suggestion.category }}」</b>
-              <b v-else-if="miniResult.suggestion.new_category">💡 AI 建议新建：「{{ miniResult.suggestion.new_category }}」</b>
-              <b v-else>🤔 AI 没把握，你来选</b>
+              <b v-if="miniResult.suggestion.category"><Target :size="12" style="vertical-align:-2px; margin-right:4px;" /> AI 建议：「{{ miniResult.suggestion.category }}」</b>
+              <b v-else-if="miniResult.suggestion.new_category"><Lightbulb :size="12" style="vertical-align:-2px; margin-right:4px;" /> AI 建议新建：「{{ miniResult.suggestion.new_category }}」</b>
+              <b v-else><HelpCircle :size="12" style="vertical-align:-2px; margin-right:4px;" /> AI 没把握，你来选</b>
               <span class="subtitle">{{ miniResult.suggestion.reason }} · 置信度 {{ Math.round((miniResult.suggestion.confidence || 0) * 100) }}%</span>
               <span v-if="miniResult.suggestion.tags" class="l2d-panel__tags">
                 <span v-for="t in miniResult.suggestion.tags.split(',')" :key="t" class="chip mini-tag">{{ t }}</span>

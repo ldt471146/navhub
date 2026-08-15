@@ -1,5 +1,13 @@
 <script setup>
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
+import {
+  Compass, LayoutGrid, Settings, NotebookPen, Activity, Eye, Tags,
+  FolderOpen, StickyNote, Pencil, Download, Upload, Search, Plus,
+  LogOut, Star, Trash2, TriangleAlert, Globe, Menu, X, CheckCircle2,
+  Sparkles, ChevronDown, Zap, MessageCircle, Heart, Wand2, Palette,
+  Database, Flame, Clock, Send, Bot, Ruler, MoreHorizontal, ArrowUpRight,
+  Moon, Sun,
+} from 'lucide-vue-next'
 import { api, ApiError } from './api'
 import MonitorView from './components/MonitorView.vue'
 
@@ -1253,7 +1261,7 @@ const emojiPreset = [
     <div class="login-bg"></div>
     <div class="login-mask"></div>
     <div class="card login-card">
-      <div class="login-logo">🧭</div>
+      <div class="login-logo"><Compass :size="34" stroke-width="2.2" /></div>
       <div class="login-title">NavHub</div>
       <div class="subtitle">个人网站导航 · AI 自动分类</div>
       <form @submit.prevent="doLogin" style="width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
@@ -1278,10 +1286,11 @@ const emojiPreset = [
     <!-- 侧栏（移动端为抽屉） -->
     <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div style="display: flex; align-items: center; gap: 8px; padding: 16px 16px 10px;">
-        <span style="font-size: 18px;">🧭</span>
+        <Compass :size="18" />
         <span class="page-title" style="font-size: 16px;">NavHub</span>
         <button class="theme-toggle" @click="toggleTheme" :title="theme === 'light' ? '切换到深色' : '切换到浅色'">
-          {{ theme === 'light' ? '🌙' : '☀️' }}
+          <Moon v-if="theme === 'light'" :size="15" />
+          <Sun v-else :size="15" />
         </button>
         <button class="sidebar-close" @click="closeSidebar" title="收起">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -1295,7 +1304,7 @@ const emojiPreset = [
 
       <nav class="scroll-region" style="flex: 1; padding: 6px 0;">
         <button class="nav-item" :class="{ active: currentCat === 'all' }" @click="goToPanel('all'); closeSidebar()">
-          <span>🗂️</span> 全部
+          <span class="nav-ico"><LayoutGrid :size="14" /></span> 全部
           <span class="count">{{ sites.length }}</span>
         </button>
         <div class="sidebar-divider"></div>
@@ -1326,14 +1335,14 @@ const emojiPreset = [
       </nav>
 
       <div class="sidebar-footer">
-        <button v-if="isAdmin" class="btn btn-sm" style="width: 100%; justify-content: center;" @click="openCreateCat">＋ 新建分类</button>
+        <button v-if="isAdmin" class="btn btn-sm" style="width: 100%; justify-content: center;" @click="openCreateCat"><Plus :size="13" style="margin-right: 5px;" /> 新建分类</button>
         <div class="sidebar-actions">
-          <button v-if="isAdmin" class="btn" @click="openSettings">⚙️ 设置</button>
-          <button class="btn btn-sm" :class="{ active: view === 'notes' }" @click="view = 'notes'; closeSidebar()">📝 便签</button>
-          <button class="btn btn-sm" :class="{ active: view === 'monitor' }" @click="view = 'monitor'; closeSidebar()">📊 服务器</button>
+          <button v-if="isAdmin" class="btn" @click="openSettings"><span class="btn-ico"><Settings :size="13" /></span> 设置</button>
+          <button class="btn btn-sm" :class="{ active: view === 'notes' }" @click="view = 'notes'; closeSidebar()"><span class="btn-ico"><NotebookPen :size="13" /></span> 便签</button>
+          <button class="btn btn-sm" :class="{ active: view === 'monitor' }" @click="view = 'monitor'; closeSidebar()"><span class="btn-ico"><Activity :size="13" /></span> 服务器</button>
         </div>
-        <div v-if="!isAdmin" class="viewer-badge">👀 访客模式 · 导航仅可查看</div>
-        <button class="btn btn-sm logout-btn" @click="doLogout">⎋ 退出登录</button>
+        <div v-if="!isAdmin" class="viewer-badge"><span class="btn-ico"><Eye :size="12" /></span> 访客模式 · 导航仅可查看</div>
+        <button class="btn btn-sm logout-btn" @click="doLogout"><LogOut :size="12" style="margin-right: 5px;" /> 退出登录</button>
       </div>
     </aside>
 
@@ -1345,7 +1354,7 @@ const emojiPreset = [
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0 10px; flex-shrink: 0;">
             <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
               <button class="btn sidebar-burger" @click="toggleSidebar" title="菜单" aria-label="打开菜单">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <Menu :size="15" />
               </button>
               <div style="min-width: 0;">
                 <div class="page-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ currentCatName }}<span v-if="activeTag" class="tag-filter-hint"> · #{{ activeTag }}</span></div>
@@ -1357,9 +1366,9 @@ const emojiPreset = [
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 编辑分类
               </button>
-              <button class="btn" @click="view = 'notes'">📝 便签</button>
+              <button class="btn" @click="view = 'notes'"><span class="btn-ico"><NotebookPen :size="13" /></span> 便签</button>
               <button class="btn btn-primary" @click="openCreateSite">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                <Plus :size="14" stroke-width="2.5" style="margin-right: 5px;" />
                 手动添加
               </button>
             </div>
@@ -1367,7 +1376,7 @@ const emojiPreset = [
 
           <!-- 标签条 -->
           <div v-if="allTags.length" class="tag-bar" style="flex-shrink: 0;">
-            <span class="tag-bar-label">🏷️ 标签</span>
+            <span class="tag-bar-label"><Tags :size="12" /></span> 标签
             <button
               v-for="[t, n] in allTags"
               :key="t"
@@ -1375,7 +1384,7 @@ const emojiPreset = [
               :class="{ active: activeTag === t }"
               @click="toggleTag(t)"
             >#{{ t }} <span class="tag-count">{{ n }}</span></button>
-            <button v-if="activeTag" class="tag-clear" @click="activeTag = ''">✕ 清除</button>
+            <button v-if="activeTag" class="tag-clear" @click="activeTag = ''"><X :size="11" style="vertical-align: -1px;" /> 清除</button>
           </div>
 
           <!-- 滑动分屏 -->
@@ -1387,7 +1396,7 @@ const emojiPreset = [
               :class="{ active: currentCat === p.key }"
             >
               <div v-if="panelSites(p.key).length === 0" class="empty">
-                <div style="font-size: 32px;">🗂️</div>
+                <FolderOpen :size="34" stroke-width="1.4" style="color: var(--text-tertiary);" />
                 <div>{{ p.name === '全部' ? '还没有收藏网站' : '这个分类还没有网站' }}</div>
                 <button v-if="isAdmin" class="btn btn-primary btn-sm" @click="view = 'add'">用 AI 添加一个</button>
               </div>
@@ -1405,19 +1414,19 @@ const emojiPreset = [
                 >
                   <div v-if="isAdmin" class="site-card__actions">
                     <button class="site-act-btn" :class="{ 'pin-active': s.pinned }" :title="s.pinned ? '取消置顶' : '置顶'" @click.stop="togglePin(s)">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+                      <Star :size="11" :fill="s.pinned ? 'currentColor' : 'none'" />
                     </button>
                     <button class="site-act-btn" title="编辑" @click.stop="openEditSite(s)">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                      <Pencil :size="11" />
                     </button>
                     <button class="site-act-btn danger" title="删除" @click.stop="removeSite(s)">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                      <Trash2 :size="11" />
                     </button>
                   </div>
                   <div class="title">
                     <span class="favicon" :class="faviconClass(s)">
                       <img v-if="faviconUrl(s)" :src="faviconUrl(s)" loading="lazy" @error="faviconError($event, s)" />
-                      <span v-if="!faviconUrl(s)">🌐</span>
+                      <span v-if="!faviconUrl(s)"><Globe :size="14" style="color: var(--text-tertiary);" /></span>
                     </span>
                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.title }}</span>
                   </div>
@@ -1426,7 +1435,7 @@ const emojiPreset = [
                     <span v-for="t in tagList(s)" :key="t" class="site-tag" :class="tagClass(t)" @click.stop="toggleTag(t)">#{{ t }}</span>
                   </div>
                   <div class="meta">
-                    <span v-if="s.status === 'down'" class="site-dead" title="检测于 {{ s.status_at }}">⚠️ 已失效</span>
+                    <span v-if="s.status === 'down'" class="site-dead" title="检测于 {{ s.status_at }}"><TriangleAlert :size="10" style="vertical-align: -1px;" /> 已失效</span>
                     {{ hostOf(s.url) }} ↗
                   </div>
                 </div>
@@ -1449,14 +1458,14 @@ const emojiPreset = [
           <!-- 滚动提示 -->
           <div class="scroll-hint">
             <span>滚轮</span>
-            <span style="font-size: 16px;">↓</span>
+            <ChevronDown :size="15" />
           </div>
         </template>
 
         <!-- AI 添加视图 -->
         <template v-else-if="view === 'add'">
           <div style="padding: 12px 0 14px;">
-            <div class="page-title">✨ AI 添加网站</div>
+            <div class="page-title">AI 添加网站</div>
             <div class="subtitle">粘贴网址，AI 根据内容自动分类</div>
           </div>
 
@@ -1499,7 +1508,7 @@ const emojiPreset = [
                 <span class="ai-conf">置信度 {{ Math.round((aiResult.suggestion.confidence || 0) * 100) }}%</span>
               </div>
               <div v-if="aiResult.suggestion.tags" class="ai-tags">
-                <span class="subtitle">🏷️ 标签：</span>
+                <span class="subtitle">标签：</span>
                 <span v-for="t in aiResult.suggestion.tags.split(',')" :key="t" class="site-tag">{{ t }}</span>
               </div>
 
@@ -1515,7 +1524,7 @@ const emojiPreset = [
                     @click="aiPickNew = false; aiPickCategory = c.name"
                   >{{ c.icon || '📌' }} {{ c.name }}</button>
                   <button class="chip" :class="{ selected: aiPickNew }" @click="aiPickNew = true; aiPickCategory = null">
-                    ＋ 新建分类
+                    <Plus :size="11" style="vertical-align: -1px; margin-right: 3px;" /> 新建分类
                   </button>
                 </div>
                 <input
@@ -1535,7 +1544,7 @@ const emojiPreset = [
             </div>
 
             <div v-if="aiPhase === 'saved'" class="ai-saved">
-              ✅ 已保存到「{{ aiPickNew ? aiNewName : aiPickCategory }}」
+              <CheckCircle2 :size="16" style="vertical-align: -3px; margin-right: 6px;" /> 已保存到「{{ aiPickNew ? aiNewName : aiPickCategory }}」
               <div style="margin-top: 12px; display: flex; gap: 8px;">
                 <button class="btn" @click="resetAi">再添加一个</button>
                 <button class="btn btn-primary" @click="view = 'home'">返回导航</button>
@@ -1549,7 +1558,7 @@ const emojiPreset = [
         <template v-else-if="view === 'notes'">
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0 10px; flex-shrink: 0;">
             <div>
-              <div class="page-title">📝 便签</div>
+              <div class="page-title"><NotebookPen :size="17" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;" /> 便签</div>
               <div class="subtitle">{{ notes.length }} 条 · 拖拽排序，随手记</div>
             </div>
           </div>
@@ -1557,7 +1566,7 @@ const emojiPreset = [
           <!-- 新建便签 -->
           <div class="card note-composer" style="flex-shrink: 0; background: linear-gradient(180deg, #FFF8E1, #FFFDF5); border-color: rgba(245, 158, 11, 0.25);">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-              <span style="font-size: 15px;">✏️</span>
+              <Pencil :size="14" />
               <span style="font-size: 13px; font-weight: 600; color: #78350F;">新便签</span>
             </div>
             <textarea v-model="noteDraft" class="input" rows="2" placeholder="写点什么…" style="height: auto; padding: 10px 12px; resize: vertical; background: rgba(255, 255, 255, 0.7);" @keydown.enter.exact.prevent="saveNote"></textarea>
@@ -1569,7 +1578,7 @@ const emojiPreset = [
           <!-- 便签列表 -->
           <div class="scroll-region" style="flex: 1; padding-top: 10px;">
             <div v-if="notes.length === 0" class="empty">
-              <div style="font-size: 32px;">🗒️</div>
+              <StickyNote :size="34" stroke-width="1.4" style="color: var(--text-tertiary);" />
               <div>还没有便签，写一条吧</div>
             </div>
             <div v-else class="site-grid" style="grid-template-columns: repeat(3, 1fr);">
@@ -1654,26 +1663,26 @@ const emojiPreset = [
     <!-- 设置弹窗 -->
     <div v-if="settingsOpen" class="modal-mask" @click.self="settingsOpen = false">
       <div class="card modal" style="max-width: 420px;">
-        <div class="modal-title">⚙️ 设置</div>
+        <div class="modal-title"><span class="btn-ico"><Settings :size="13" /></span> 设置</div>
 
-        <div class="modal-label">📦 数据备份</div>
+        <div class="modal-label">数据备份</div>
         <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-          <button class="btn" style="flex: 1; justify-content: center;" @click="exportBackup">⬇️ 导出备份</button>
+          <button class="btn" style="flex: 1; justify-content: center;" @click="exportBackup"><span class="btn-ico"><Download :size="13" /></span> 导出备份</button>
           <label class="btn" style="flex: 1; justify-content: center; cursor: pointer;">
-            ⬆️ 导入{{ importing ? '中…' : '' }}
+            <span class="btn-ico"><Upload :size="13" /></span> 导入{{ importing ? '中…' : '' }}
             <input type="file" accept=".json,.html,.htm" style="display: none;" @change="importBackup" />
           </label>
         </div>
         <div class="modal-hint" style="margin-bottom: 16px;">支持 NavHub JSON 备份 或 浏览器导出的书签 HTML（自动识别）</div>
 
-        <div class="modal-label">🔍 网站健康</div>
+        <div class="modal-label">网站健康</div>
         <div style="display: flex; gap: 8px; margin-bottom: 10px;">
           <button v-if="isAdmin" class="btn" style="flex: 1; justify-content: center;" @click="runHealthCheck" :disabled="healthChecking">
             {{ healthChecking ? '检测中…' : '🩺 立即检测失效网站' }}
           </button>
         </div>
 
-        <div v-if="topSites.length" class="modal-label" style="margin-top: 4px;">🔥 热门网站 TOP {{ Math.min(topSites.length, 5) }}</div>
+        <div v-if="topSites.length" class="modal-label" style="margin-top: 4px;">热门网站 TOP {{ Math.min(topSites.length, 5) }}</div>
         <div v-if="topSites.length" class="top-list" style="margin-bottom: 12px;">
           <a v-for="(t, i) in topSites.slice(0, 5)" :key="t.id" class="top-item" :href="t.url" target="_blank" rel="noopener">
             <span class="top-rank">{{ i + 1 }}</span>
@@ -1682,7 +1691,7 @@ const emojiPreset = [
           </a>
         </div>
 
-        <div class="modal-label">🎨 主页背景</div>
+        <div class="modal-label">主页背景</div>
         <div style="display: flex; gap: 6px; margin-bottom: 10px;">
           <button class="btn btn-sm" :class="{ active: bgMode === 'default' }" @click="bgMode = 'default'">默认</button>
           <button class="btn btn-sm" :class="{ active: bgMode === 'color' }" @click="bgMode = 'color'">纯色</button>

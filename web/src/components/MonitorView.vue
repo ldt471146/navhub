@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { Brain, HardDrive, Disc, RefreshCw, ArrowUp, ArrowDown, Puzzle, Clock, Monitor } from 'lucide-vue-next'
 import { api } from '../api'
 
 const stats = ref(null)
@@ -56,7 +57,7 @@ onUnmounted(() => clearInterval(timer))
       <!-- 概览卡片行 -->
       <div class="stat-row">
         <div class="card stat-card">
-          <div class="stat-icon">🧠</div>
+          <div class="stat-icon"><Brain :size="18" /></div>
           <div class="stat-label">CPU 使用率</div>
           <div class="stat-value" :class="pctClass(stats.cpu.percent)">{{ stats.cpu.percent }}%</div>
           <div class="progress"><div class="progress-bar" :class="pctClass(stats.cpu.percent)" :style="{ width: stats.cpu.percent + '%' }"></div></div>
@@ -64,7 +65,7 @@ onUnmounted(() => clearInterval(timer))
         </div>
 
         <div class="card stat-card">
-          <div class="stat-icon">💾</div>
+          <div class="stat-icon"><HardDrive :size="18" /></div>
           <div class="stat-label">内存</div>
           <div class="stat-value" :class="pctClass(stats.memory.percent)">{{ stats.memory.percent }}%</div>
           <div class="progress"><div class="progress-bar" :class="pctClass(stats.memory.percent)" :style="{ width: stats.memory.percent + '%' }"></div></div>
@@ -72,7 +73,7 @@ onUnmounted(() => clearInterval(timer))
         </div>
 
         <div class="card stat-card">
-          <div class="stat-icon">📀</div>
+          <div class="stat-icon"><Disc :size="18" /></div>
           <div class="stat-label">磁盘 /</div>
           <div class="stat-value" :class="pctClass(stats.disk.percent)">{{ stats.disk.percent }}%</div>
           <div class="progress"><div class="progress-bar" :class="pctClass(stats.disk.percent)" :style="{ width: stats.disk.percent + '%' }"></div></div>
@@ -80,7 +81,7 @@ onUnmounted(() => clearInterval(timer))
         </div>
 
         <div class="card stat-card">
-          <div class="stat-icon">🔄</div>
+          <div class="stat-icon"><RefreshCw :size="18" /></div>
           <div class="stat-label">交换分区</div>
           <div class="stat-value" :class="pctClass(stats.swap.percent)">{{ stats.swap.percent }}%</div>
           <div class="progress"><div class="progress-bar" :class="pctClass(stats.swap.percent)" :style="{ width: stats.swap.percent + '%' }"></div></div>
@@ -107,23 +108,23 @@ onUnmounted(() => clearInterval(timer))
           <div class="section-title" style="padding: 14px 16px 10px;">网络与进程</div>
           <div class="net-list">
             <div class="net-item">
-              <span class="net-label">📤 累计发送</span>
+              <span class="net-label"><ArrowUp :size="11" style="vertical-align:-1px;" /> 累计发送</span>
               <span class="net-val">{{ stats.fmt.net_sent }}</span>
             </div>
             <div class="net-item">
-              <span class="net-label">📥 累计接收</span>
+              <span class="net-label"><ArrowDown :size="11" style="vertical-align:-1px;" /> 累计接收</span>
               <span class="net-val">{{ stats.fmt.net_recv }}</span>
             </div>
             <div class="net-item">
-              <span class="net-label">🧩 进程数</span>
+              <span class="net-label"><Puzzle :size="11" style="vertical-align:-1px;" /> 进程数</span>
               <span class="net-val">{{ stats.processes }}</span>
             </div>
             <div class="net-item">
-              <span class="net-label">🕐 服务器时间</span>
+              <span class="net-label"><Clock :size="11" style="vertical-align:-1px;" /> 服务器时间</span>
               <span class="net-val">{{ stats.server_time }}</span>
             </div>
             <div class="net-item">
-              <span class="net-label">🖥️ 主机名</span>
+              <span class="net-label"><Monitor :size="11" style="vertical-align:-1px;" /> 主机名</span>
               <span class="net-val">{{ stats.hostname }}</span>
             </div>
           </div>

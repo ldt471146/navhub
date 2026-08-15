@@ -14,12 +14,28 @@ body {
   font-family: var(--font-ui);
   background: var(--app-bg-color, var(--bg-app));
   background-image: var(--app-bg-image, none);
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  background-size: cover, auto;
+  background-position: center, center;
+  background-attachment: fixed, fixed;
   color: var(--text-primary);
   font-size: 14px;
+  letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  position: relative;
+}
+
+/* 顶部微光装饰：纯视觉层次，不影响自定义背景（在 body 之上叠加） */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(1200px 800px at 85% -10%, rgba(37, 99, 235, 0.05), transparent 60%);
+}
+html[data-theme="dark"] body::before {
+  background: radial-gradient(1200px 800px at 85% -10%, rgba(59, 130, 246, 0.07), transparent 60%);
 }
 
 button {
@@ -48,11 +64,11 @@ input, textarea {
   }
 }
 
-/* 统一过渡时长 */
+/* 统一过渡时长与缓动曲线 */
 .btn, .nav-item, .site-card, .tag-chip, .site-tag,
 .cat-act-btn, .site-act-btn, .panel-dot, .input, .modal-card {
-  transition-duration: 0.16s;
-  transition-timing-function: ease;
+  transition-duration: var(--dur);
+  transition-timing-function: var(--ease-out);
 }
 
 /* Shell */
@@ -64,7 +80,9 @@ input, textarea {
 
 .sidebar {
   width: var(--sidebar-width);
-  background: var(--bg-sidebar);
+  background: color-mix(in srgb, var(--bg-sidebar) 92%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -644,7 +662,7 @@ input, textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: border-color 0.16s, transform 0.16s, box-shadow 0.16s;
+  transition: border-color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
   cursor: pointer;
   min-height: 84px;
   position: relative;
@@ -652,8 +670,12 @@ input, textarea {
 
 .site-card:hover {
   border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.05), 0 6px 20px rgba(37, 99, 235, 0.06);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+.site-card:active {
+  transform: translateY(-1px) scale(0.995);
 }
 
 .site-card__actions {
@@ -748,13 +770,14 @@ input, textarea {
   padding: 0 14px;
   border-radius: var(--radius-sm);
   font-size: 13px;
+  letter-spacing: var(--tracking-label);
   border: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--text-primary);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: background 0.16s, border-color 0.16s, color 0.16s, transform 0.16s;
+  transition: background var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur) var(--ease-out);
 }
 
 .btn:hover {
@@ -763,19 +786,20 @@ input, textarea {
 }
 
 .btn:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .btn-primary {
   background: var(--primary);
   border-color: transparent;
   color: var(--primary-foreground);
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25), 0 4px 12px rgba(37, 99, 235, 0.18);
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
   border-color: transparent;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3), 0 8px 20px rgba(37, 99, 235, 0.25);
 }
 
 .btn-danger {
@@ -863,11 +887,13 @@ input, textarea {
 
 .page-title {
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: var(--tracking-title);
   color: var(--text-primary);
 }
 
 .subtitle {
   font-size: 12px;
   color: var(--text-tertiary);
+  letter-spacing: 0.01em;
 }
