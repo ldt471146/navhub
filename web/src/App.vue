@@ -344,13 +344,14 @@ function tagList(s) {
 const panelsRef = ref(null)
 let scrollSyncing = false
 
-// 面板顺序：全部 → 各分类（无未分类）
+// 面板顺序：我喜欢 → 全部 → 各分类（无未分类）
 const panels = computed(() => {
   const list = [
-    { key: 'all', name: '全部', icon: '🗂️' },
+    { key: 'likes', name: '我喜欢', icon: 'heart' },
+    { key: 'all', name: '全部', icon: 'grid' },
   ]
   for (const c of categories.value) {
-    list.push({ key: c.id, name: c.name, icon: c.icon || '📌' })
+    list.push({ key: c.id, name: c.name, icon: c.icon || 'folder' })
   }
   return list
 })
@@ -360,6 +361,9 @@ const panelIndex = computed(() => {
   const idx = panels.value.findIndex(p => p.key === currentCat.value)
   return idx < 0 ? 0 : idx
 })
+
+// 置顶/喜欢的网站
+const likedSites = computed(() => sites.value.filter(s => s.pinned))
 
 // 每个面板内的网站（含搜索 + 标签过滤）
 function panelSites(key) {
@@ -379,6 +383,7 @@ function panelSites(key) {
   }
   if (key === 'all') return list
   if (key === 'uncat') return list.filter(s => !s.category_id)
+  if (key === 'likes') return list.filter(s => s.pinned)
   return list.filter(s => s.category_id === key)
 }
 
@@ -424,6 +429,7 @@ function toggleTag(t) {
 }
 
 const currentCatName = computed(() => {
+  if (currentCat.value === 'likes') return '我喜欢'
   if (currentCat.value === 'all') return '全部'
   if (currentCat.value === 'uncat') return '未分类'
   const c = categories.value.find(c => c.id === currentCat.value)
@@ -634,12 +640,12 @@ async function autoFetchSite() {
   }
 }
 
-// 置顶/取消置顶
+// 置顶/加入我喜欢
 async function togglePin(s) {
   try {
     await api.togglePin(s.id, !s.pinned)
     s.pinned = s.pinned ? 0 : 1
-    showToast(s.pinned ? '已置顶 ⭐' : '已取消置顶', 'info')
+    showToast(s.pinned ? '已加入我喜欢' : '已移出我喜欢', 'info')
   } catch (e) {
     showToast(e.message, 'error')
   }
@@ -1303,6 +1309,10 @@ const emojiPreset = [
       </div>
 
       <nav class="scroll-region" style="flex: 1; padding: 6px 0;">
+        <button class="nav-item" :class="{ active: currentCat === 'likes' }" @click="goToPanel('likes'); closeSidebar()">
+          <span class="nav-ico"><Heart :size="14" :fill="currentCat === 'likes' ? 'currentColor' : 'none'" /></span> 我喜欢
+          <span class="count">{{ likedSites.length }}</span>
+        </button>
         <button class="nav-item" :class="{ active: currentCat === 'all' }" @click="goToPanel('all'); closeSidebar()">
           <span class="nav-ico"><LayoutGrid :size="14" /></span> 全部
           <span class="count">{{ sites.length }}</span>
@@ -1362,7 +1372,7 @@ const emojiPreset = [
               </div>
             </div>
             <div v-if="isAdmin" style="display: flex; gap: 8px;">
-              <button v-if="currentCat !== 'all' && currentCat !== 'uncat'" class="btn" @click="openEditCat(categories.find(c => c.id === currentCat))">
+              <button v-if="currentCat !== 'all' && currentCat !== 'uncat' && currentCat !== 'likes'" class="btn" @click="openEditCat(categories.find(c => c.id === currentCat))">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 编辑分类
               </button>
@@ -1396,8 +1406,9 @@ const emojiPreset = [
               :class="{ active: currentCat === p.key }"
             >
               <div v-if="panelSites(p.key).length === 0" class="empty">
-                <FolderOpen :size="34" stroke-width="1.4" style="color: var(--text-tertiary);" />
-                <div>{{ p.name === '全部' ? '还没有收藏网站' : '这个分类还没有网站' }}</div>
+                <Heart v-if="p.key === 'likes'" :size="34" stroke-width="1.4" style="color: var(--text-tertiary);" />
+                <FolderOpen v-else :size="34" stroke-width="1.4" style="color: var(--text-tertiary);" />
+                <div>{{ p.key === 'likes' ? '还没有喜欢的网站，点卡片上的星标收藏' : (p.name === '全部' ? '还没有收藏网站' : '这个分类还没有网站') }}</div>
                 <button v-if="isAdmin" class="btn btn-primary btn-sm" @click="view = 'add'">用 AI 添加一个</button>
               </div>
               <div v-else class="site-grid">
