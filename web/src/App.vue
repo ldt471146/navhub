@@ -438,6 +438,11 @@ const currentCatName = computed(() => {
 
 // ---------- 认证 ----------
 const isAdmin = ref(true) // admin=管理员全功能, viewer=访客只读
+const l2dReady = ref(false) // Live2D 延迟挂载标记（3s 后为 true）
+
+function scheduleL2d() {
+  setTimeout(() => { l2dReady.value = true }, 3000)
+}
 
 // 访客只读保护：切换到访客时强制回主页（便签/服务器已开放，仅保护 AI 添加）
 watch(isAdmin, v => {
@@ -457,6 +462,7 @@ async function init() {
       await loadSettings()
       await loadTopSites()
       applyBg()
+      scheduleL2d()
     }
   } catch {}
 }
@@ -471,6 +477,7 @@ async function doLogin() {
     await loadAll()
     await loadNotes()
     await loadTopSites()
+    scheduleL2d()
   } catch (e) {
     loginError.value = e.message
   }
@@ -1280,8 +1287,8 @@ const emojiPreset = [
 
   <!-- 主界面 -->
   <div v-else class="shell">
-    <!-- 全局二次元机器人（可拖拽；管理员全功能，访客仅聊天） -->
-    <Live2dAssistant :is-admin="isAdmin" @saved="loadAll" />
+    <!-- 全局二次元机器人（延迟挂载：优先保证主界面加载速度，3s 后再拉 660KB Live2D 分包） -->
+    <Live2dAssistant v-if="l2dReady" :is-admin="isAdmin" @saved="loadAll" />
 
     <!-- Toast 提示 -->
     <div v-if="toast.msg" class="toast" :class="toast.type">{{ toast.msg }}</div>

@@ -61,6 +61,9 @@ def _extract_favicon(html: str, base_url: str) -> str:
         )
     if m:
         href = m.group(1).strip()
+        # 防线：拒绝 data: URI（base64 内嵌图会让 API 膨胀到数百 KB）
+        if href.startswith("data:"):
+            return duckduckgo_icon(urlparse(base_url).netloc)
         if href.startswith("//"):
             href = "https:" + href
         elif href.startswith("/"):

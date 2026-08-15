@@ -170,15 +170,24 @@ def delete_category(cid: int, session: str | None = Cookie(default=None)):
 @app.get("/api/sites")
 def list_sites(category_id: int | None = None, tag: str | None = None, session: str | None = Cookie(default=None)):
     require_auth(session)
-    return db.list_sites(category_id, tag)
+    sites = db.list_sites(category_id, tag)
+    # 性能防线：过滤 base64/超长 favicon（曾导致 API 700KB+）
+    for s in sites:
+        fav = s.get("favicon") or ""
+        if "base64" in fav or len(fav) > 500:
+            s["favicon"] = ""
+    return sites
 
 
 @app.post("/api/sites")
 def create_site(body: SiteIn, session: str | None = Cookie(default=None)):
     require_admin(session)
+    fav = (body.favicon or "").strip()
+    if "base64" in fav or len(fav) > 500:
+        fav = ""
     title = body.title or fetch.fetch_page(body.url)["title"]
     try:
-        return db.create_site(body.category_id, title, body.url, body.description, body.favicon, body.tags)
+        return db.create_site(body.category_id, title, body.url, body.description, fav, body.tags)
     except Exception:
         raise HTTPException(status_code=400, detail="URL 已存在")
 
@@ -186,6 +195,9 @@ def create_site(body: SiteIn, session: str | None = Cookie(default=None)):
 @app.patch("/api/sites/{sid}")
 def update_site(sid: int, body: SitePatch, session: str | None = Cookie(default=None)):
     require_admin(session)
+    fav = (body.favicon or "").strip() if body.favicon is not None else None
+    if fav and ("base64" in fav or len(fav) > 500):
+        fav = ""
     if not db.get_site(sid):
         raise HTTPException(status_code=404, detail="网站不存在")
     try:
@@ -195,7 +207,7 @@ def update_site(sid: int, body: SitePatch, session: str | None = Cookie(default=
             title=body.title,
             url=body.url,
             description=body.description,
-            favicon=body.favicon,
+            favicon=fav,
             tags=body.tags,
             sort_order=body.sort_order,
             pinned=body.pinned,
