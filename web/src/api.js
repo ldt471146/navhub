@@ -1,6 +1,36 @@
 // NavHub API 封装
 const BASE = ''
 
+// 带超时的 fetch（聊天等慢接口用）
+async function reqWithTimeout(method, path, body, timeoutMs = 35000) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const resp = await fetch(BASE + path, {
+      method,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    })
+    if (resp.status === 401) throw new ApiError(401, '未登录')
+    if (!resp.ok) {
+      let detail = resp.statusText
+      try {
+        const data = await resp.json()
+        detail = data.detail || detail
+      } catch {}
+      throw new ApiError(resp.status, detail)
+    }
+    return resp.json()
+  } catch (e) {
+    if (e.name === 'AbortError') throw new ApiError(408, 'AI 响应超时，稍后再试')
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function req(method, path, body) {
   const opts = {
     method,
@@ -53,7 +83,7 @@ export const api = {
   deleteNote: (id) => req('DELETE', `/api/notes/${id}`),
   systemStats: () => req('GET', '/api/system/stats'),
   weather: () => req('GET', '/api/weather'),
-  chat: (message, history) => req('POST', '/api/chat', { message, history }),
+  chat: (message, history) => reqWithTimeout('POST', '/api/chat', { message, history }),
   exportData: () => req('GET', '/api/export'),
   importData: (data) => req('POST', '/api/import', data),
   getSettings: () => req('GET', '/api/settings'),
