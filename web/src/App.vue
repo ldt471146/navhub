@@ -1,15 +1,102 @@
 <script setup>
-import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent } from 'vue'
 import {
   Compass, LayoutGrid, Settings, NotebookPen, Activity, Eye, Tags,
   FolderOpen, StickyNote, Pencil, Download, Upload, Search, Plus,
   LogOut, Star, Trash2, TriangleAlert, Globe, Menu, X, CheckCircle2,
   Sparkles, ChevronDown, Zap, MessageCircle, Heart, Wand2, Palette,
   Database, Flame, Clock, Send, Bot, Ruler, MoreHorizontal, ArrowUpRight,
-  Moon, Sun,
+  Moon, Sun, Pin, Folder, Monitor, Newspaper, Tv, Clapperboard, Video,
+  Gamepad2, BookOpen, ShoppingCart, Plane, Wallet, CreditCard, Wrench,
+  Brain, Lightbulb, Music, Headphones, Mic, Guitar, Piano, Drum, Camera,
+  Cloud, Gem, Gift, PartyPopper, Pizza, Hamburger, Coffee, Home, Building2,
+  School, Hospital, Landmark, Store, Car, Bike, Ship, Rocket, Map, Calendar,
+  CalendarDays, BarChart3, TrendingUp, TrendingDown, MessagesSquare,
+  Satellite, Package, BatteryCharging, Tag, FlaskConical, Microscope,
+  GraduationCap, User, Users, PenLine, Trophy, Target, Archive, Contact,
+  Magnet, ScrollText, Printer, Phone, Code2, Keyboard, MousePointer2,
+  Smartphone, Save, Dices, CheckSquare, KeyRound, Copy, RefreshCw,
 } from 'lucide-vue-next'
 import { api, ApiError } from './api'
 import MonitorView from './components/MonitorView.vue'
+import ParticleBg from './components/ParticleBg.vue'
+
+// ---------- 分类图标体系：lucide SVG 优先，兼容历史 emoji ----------
+const ICON_CHOICES = [
+  { name: 'folder', comp: Folder }, { name: 'folder-open', comp: FolderOpen },
+  { name: 'rocket', comp: Rocket }, { name: 'bot', comp: Bot },
+  { name: 'monitor', comp: Monitor }, { name: 'code', comp: Code2 },
+  { name: 'globe', comp: Globe }, { name: 'brain', comp: Brain },
+  { name: 'lightbulb', comp: Lightbulb }, { name: 'sparkles', comp: Sparkles },
+  { name: 'zap', comp: Zap }, { name: 'flame', comp: Flame },
+  { name: 'star', comp: Star }, { name: 'heart', comp: Heart },
+  { name: 'gem', comp: Gem }, { name: 'trophy', comp: Trophy },
+  { name: 'target', comp: Target }, { name: 'book-open', comp: BookOpen },
+  { name: 'graduation-cap', comp: GraduationCap }, { name: 'microscope', comp: Microscope },
+  { name: 'flask', comp: FlaskConical }, { name: 'music', comp: Music },
+  { name: 'headphones', comp: Headphones }, { name: 'mic', comp: Mic },
+  { name: 'piano', comp: Piano }, { name: 'guitar', comp: Guitar },
+  { name: 'film', comp: Clapperboard }, { name: 'tv', comp: Tv },
+  { name: 'camera', comp: Camera }, { name: 'newspaper', comp: Newspaper },
+  { name: 'gamepad', comp: Gamepad2 }, { name: 'palette', comp: Palette },
+  { name: 'wrench', comp: Wrench }, { name: 'settings', comp: Settings },
+  { name: 'package', comp: Package }, { name: 'shopping-cart', comp: ShoppingCart },
+  { name: 'wallet', comp: Wallet }, { name: 'credit-card', comp: CreditCard },
+  { name: 'home', comp: Home }, { name: 'building', comp: Building2 },
+  { name: 'school', comp: School }, { name: 'hospital', comp: Hospital },
+  { name: 'landmark', comp: Landmark }, { name: 'store', comp: Store },
+  { name: 'car', comp: Car }, { name: 'bike', comp: Bike },
+  { name: 'ship', comp: Ship }, { name: 'plane', comp: Plane },
+  { name: 'map', comp: Map }, { name: 'compass', comp: Compass },
+  { name: 'clock', comp: Clock }, { name: 'calendar', comp: Calendar },
+  { name: 'chart', comp: BarChart3 }, { name: 'trending-up', comp: TrendingUp },
+  { name: 'message', comp: MessageCircle }, { name: 'users', comp: Users },
+  { name: 'user', comp: User }, { name: 'satellite', comp: Satellite },
+  { name: 'phone', comp: Phone }, { name: 'mail', comp: MessagesSquare },
+  { name: 'keyboard', comp: Keyboard }, { name: 'smartphone', comp: Smartphone },
+  { name: 'printer', comp: Printer }, { name: 'save', comp: Save },
+  { name: 'tag', comp: Tag }, { name: 'pen', comp: PenLine },
+  { name: 'archive', comp: Archive }, { name: 'magnet', comp: Magnet },
+  { name: 'scroll', comp: ScrollText }, { name: 'cloud', comp: Cloud },
+  { name: 'moon', comp: Moon }, { name: 'sun', comp: Sun },
+]
+
+const LUCIDE_MAP = Object.fromEntries(ICON_CHOICES.map(c => [c.name, c.comp]))
+
+// 历史 emoji 分类 → lucide 图标（渲染时兜底 FolderOpen）
+const EMOJI_ICONS = {
+  '📌': Pin, '📁': Folder, '📂': FolderOpen, '🤖': Bot, '💻': Monitor,
+  '🖥️': Monitor, '📰': Newspaper, '🗞️': Newspaper, '📺': Tv, '🎬': Clapperboard,
+  '🎥': Video, '📹': Video, '🎮': Gamepad2, '🕹️': Gamepad2, '📚': BookOpen,
+  '📖': BookOpen, '🛒': ShoppingCart, '✈️': Plane, '🛩️': Plane, '💰': Wallet,
+  '💵': Wallet, '💳': CreditCard, '🎨': Palette, '🔧': Wrench, '🛠️': Wrench,
+  '🧰': Wrench, '🧠': Brain, '💡': Lightbulb, '🌐': Globe, '🌍': Globe,
+  '🌎': Globe, '🌏': Globe, '🔥': Flame, '⭐': Star, '❤️': Heart,
+  '🎵': Music, '🎧': Headphones, '🎤': Mic, '🎙️': Mic, '🎸': Guitar,
+  '🎹': Piano, '🥁': Drum, '🎻': Music, '📷': Camera, '☁️': Cloud,
+  '🌙': Moon, '☀️': Sun, '⚡': Zap, '💎': Gem, '🎁': Gift,
+  '🎉': PartyPopper, '🎊': PartyPopper, '🍕': Pizza, '🍔': Hamburger, '☕': Coffee,
+  '🏠': Home, '🏢': Building2, '🏫': School, '🏥': Hospital, '🏦': Landmark,
+  '🏪': Store, '🚗': Car, '🚕': Car, '🚲': Bike, '🛵': Bike, '🚢': Ship,
+  '🚀': Rocket, '🛸': Rocket, '🗺️': Map, '🧭': Compass, '⏰': Clock,
+  '🗓️': Calendar, '📅': Calendar, '📆': CalendarDays, '📊': BarChart3,
+  '📈': TrendingUp, '📉': TrendingDown, '💬': MessageCircle, '🗣️': MessagesSquare,
+  '📡': Satellite, '⚙️': Settings, '📦': Package, '🔋': BatteryCharging,
+  '🔍': Search, '🔎': Search, '🏷️': Tag, '✨': Sparkles, '🧪': FlaskConical,
+  '🔬': Microscope, '🎓': GraduationCap, '👤': User, '👥': Users,
+  '📝': PenLine, '✍️': PenLine, '✏️': PenLine, '🏆': Trophy, '🥇': Trophy,
+  '🎯': Target, '🗄️': Archive, '📇': Contact, '🧲': Magnet, '📜': ScrollText,
+  '🖨️': Printer, '☎️': Phone, '📞': Phone, '🧑‍💻': Code2, '👨‍💻': Code2,
+  '👩‍💻': Code2, '⌨️': Keyboard, '🖱️': MousePointer2, '📱': Smartphone,
+  '💾': Save,
+}
+
+function catIcon(icon) {
+  if (!icon) return FolderOpen
+  if (EMOJI_ICONS[icon]) return EMOJI_ICONS[icon]
+  if (LUCIDE_MAP[icon]) return LUCIDE_MAP[icon]
+  return FolderOpen
+}
 
 // ---------- 设置面板 ----------
 const settingsOpen = ref(false)
@@ -46,16 +133,20 @@ async function saveBg() {
 
 function applyBg() {
   const root = document.documentElement
+  const body = document.body
   const mode = bgMode.value
   if (mode === 'custom' && bgUrl.value.trim()) {
     root.style.setProperty('--app-bg-image', `url(${bgUrl.value.trim()})`)
     root.style.setProperty('--app-bg-color', 'var(--bg-app)')
+    body.dataset.customBg = '1'
   } else if (mode === 'color') {
     root.style.setProperty('--app-bg-image', 'none')
     root.style.setProperty('--app-bg-color', bgColor.value)
+    delete body.dataset.customBg
   } else {
     root.style.setProperty('--app-bg-image', 'none')
     root.style.setProperty('--app-bg-color', 'var(--bg-app)')
+    delete body.dataset.customBg
   }
 }
 
@@ -103,7 +194,6 @@ async function importBackup(e) {
 function parseBookmarksHtml(html) {
   const cats = []
   const sites = []
-  const catMap = new Map()
   // 提取 <DT><H3>分类名</H3> 和 <DT><A HREF="url">标题</A>
   const h3Re = /<H3[^>]*>([^<]+)<\/H3>/gi
   const aRe = /<A HREF="([^"]+)"[^>]*>([^<]+)<\/A>/gi
@@ -328,6 +418,303 @@ function applyTheme(t) {
 function toggleTheme() { applyTheme(theme.value === 'light' ? 'dark' : 'light') }
 applyTheme(theme.value)
 
+// ---------- A5: 网格密度 ----------
+const density = ref(localStorage.getItem('navhub-density') || 'comfort') // comfort | compact
+function applyDensity(d) {
+  density.value = d
+  localStorage.setItem('navhub-density', d)
+  document.body.dataset.density = d
+}
+function toggleDensity() { applyDensity(density.value === 'comfort' ? 'compact' : 'comfort') }
+applyDensity(density.value)
+
+// ---------- A1: Cmd/Ctrl+K 全局命令面板 ----------
+const paletteOpen = ref(false)
+const paletteQuery = ref('')
+const paletteIndex = ref(0)
+const paletteInputRef = ref(null)
+const paletteWeb = ref(null) // { answer, results } 全网搜索结果
+const paletteWebBusy = ref(false)
+let paletteTimer = null
+
+// 输入防抖 400ms 后发起全网搜索（经后端代理，key 不暴露）
+watch(paletteQuery, (q) => {
+  clearTimeout(paletteTimer)
+  paletteWeb.value = null
+  const query = (q || '').trim()
+  if (!query || query.startsWith('#')) return
+  paletteTimer = setTimeout(async () => {
+    paletteWebBusy.value = true
+    try { paletteWeb.value = await api.searchWeb(query) } catch { paletteWeb.value = null }
+    paletteWebBusy.value = false
+  }, 400)
+})
+
+const paletteResults = computed(() => {
+  const q = paletteQuery.value.trim().toLowerCase()
+  const out = []
+  if (!q) {
+    // 空查询：快捷操作
+    return [
+      { type: 'action', label: 'AI 添加网站', hint: '粘贴 URL 自动分类', run: () => { paletteOpen.value = false; view.value = 'add' } },
+      { type: 'action', label: '便签', hint: '', run: () => { paletteOpen.value = false; view.value = 'notes' } },
+      { type: 'action', label: '服务器监控', hint: '', run: () => { paletteOpen.value = false; view.value = 'monitor' } },
+      { type: 'action', label: '标签管理', hint: '', run: () => { paletteOpen.value = false; view.value = 'tags' } },
+      { type: 'action', label: '切换主题', hint: theme.value === 'light' ? '切到深色' : '切到浅色', run: () => { paletteOpen.value = false; toggleTheme() } },
+    ]
+  }
+  if (q.startsWith('#')) {
+    const t = q.slice(1)
+    for (const [name, n] of allTags.value) {
+      if (name.toLowerCase().includes(t)) out.push({ type: 'tag', label: `#${name}`, hint: `${n} 个网站`, run: () => { paletteOpen.value = false; activeTag.value = name; goToPanel('all') } })
+    }
+    return out.slice(0, 8)
+  }
+  // 本地站点
+  for (const s of sites.value) {
+    const title = (s.title || '').toLowerCase()
+    const url = (s.url || '').toLowerCase()
+    const tags = (s.tags || '').toLowerCase()
+    if (title.includes(q) || url.includes(q) || tags.includes(q)) {
+      out.push({ type: 'site', label: s.title || s.url, hint: hostOf(s.url), site: s })
+    }
+    if (out.length >= 5) break
+  }
+  // 本地分类
+  if (out.length < 5) {
+    for (const c of categories.value) {
+      if (c.name.toLowerCase().includes(q)) out.push({ type: 'cat', label: c.name, hint: `${c.site_count} 个网站`, cat: c })
+      if (out.length >= 8) break
+    }
+  }
+  // 全网搜索结果（分组标记）
+  if (paletteWeb.value && paletteWeb.value.results && paletteWeb.value.results.length) {
+    const webResults = paletteWeb.value.results.slice(0, 5)
+    for (const r of webResults) {
+      out.push({ type: 'web', label: r.title || r.url, hint: r.url, url: r.url, content: (r.content || '').slice(0, 80) })
+    }
+  }
+  return out.slice(0, 12)
+})
+
+function openPalette() {
+  paletteOpen.value = true
+  paletteQuery.value = ''
+  paletteIndex.value = 0
+  nextTick(() => paletteInputRef.value && paletteInputRef.value.focus())
+}
+
+function closePalette() { paletteOpen.value = false }
+
+function runPaletteItem(item) {
+  if (item.type === 'site') openSite(item.site)
+  else if (item.type === 'cat') goToPanel(item.cat.id)
+  else if (item.type === 'web') { paletteOpen.value = false; window.open(item.url, '_blank', 'noopener') }
+  else item.run && item.run()
+}
+
+function onPaletteKey(e) {
+  if (e.key === 'ArrowDown') { e.preventDefault(); paletteIndex.value = (paletteIndex.value + 1) % Math.max(paletteResults.value.length, 1) }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); paletteIndex.value = (paletteIndex.value - 1 + Math.max(paletteResults.value.length, 1)) % Math.max(paletteResults.value.length, 1) }
+  else if (e.key === 'Enter') { const it = paletteResults.value[paletteIndex.value]; if (it) runPaletteItem(it) }
+  else if (e.key === 'Escape') { closePalette() }
+}
+
+// 全局快捷键
+function onGlobalKey(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    if (loggedIn.value) openPalette()
+  }
+}
+
+// ---------- B4: 批量管理 ----------
+const selectMode = ref(false)
+const selectedIds = ref(new Set())
+
+function enterSelectMode() { selectMode.value = true; selectedIds.value = new Set() }
+function exitSelectMode() { selectMode.value = false; selectedIds.value = new Set() }
+function toggleSelect(s) {
+  const set = new Set(selectedIds.value)
+  if (set.has(s.id)) set.delete(s.id); else set.add(s.id)
+  selectedIds.value = set
+}
+const selectedCount = computed(() => selectedIds.value.size)
+
+async function bulkMoveToCat(cid) {
+  if (!selectedCount.value) return
+  try {
+    await api.moveBulk([...selectedIds.value], cid)
+    showToast(`已移动 ${selectedCount.value} 个网站`, 'info')
+    exitSelectMode()
+    await loadAll()
+  } catch (e) { showToast(e.message, 'error') }
+}
+
+async function bulkDelete() {
+  if (!selectedCount.value) return
+  if (!confirm(`删除选中的 ${selectedCount.value} 个网站？`)) return
+  try {
+    for (const sid of selectedIds.value) await api.deleteSite(sid)
+    showToast(`已删除 ${selectedCount.value} 个网站`, 'info')
+    exitSelectMode()
+    await loadAll()
+  } catch (e) { showToast(e.message, 'error') }
+}
+
+// ---------- B6: 随机逛一个 ----------
+function randomSite() {
+  const list = panelSites(currentCat.value)
+  if (!list.length) { showToast('当前分类没有网站', 'info'); return }
+  const s = list[Math.floor(Math.random() * list.length)]
+  openSite(s)
+}
+
+// ---------- B6: 最近添加排序 ----------
+const sortMode = ref('default') // default | recent
+const sortedSites = computed(() => {
+  if (sortMode.value === 'recent') {
+    return [...sites.value].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+  }
+  return sites.value
+})
+
+// ---------- A3: 卡片 hover 网站截图预览 ----------
+const previewSite = ref(null)
+const previewPos = ref({ x: 0, y: 0 })
+let previewTimer = null
+
+function shotUrl(s) {
+  if (!s || !s.url) return ''
+  try {
+    const u = new URL(s.url)
+    return `https://s0.wp.com/mshots/v1/${encodeURIComponent(u.toString())}?w=640&h=400`
+  } catch { return '' }
+}
+
+function showPreview(e, s) {
+  if (isMobile.value) return
+  clearTimeout(previewTimer)
+  let x = e.clientX + 18
+  if (x + 320 > window.innerWidth - 10) x = e.clientX - 338
+  previewPos.value = { x, y: e.clientY + 14 }
+  previewTimer = setTimeout(() => { previewSite.value = s }, 320)
+}
+
+function hidePreview() {
+  clearTimeout(previewTimer)
+  previewSite.value = null
+}
+
+// ---------- B7: 标签管理 ----------
+const tagManage = ref({ name: '', newName: '' })
+const tagModalOpen = ref(false)
+
+function openTagManage(t) {
+  tagManage.value = { name: t, newName: t }
+  tagModalOpen.value = true
+}
+
+async function saveTagRename() {
+  const oldName = tagManage.value.name
+  const newName = tagManage.value.newName.trim()
+  if (!newName) return
+  try {
+    const r = await api.renameTag(oldName, newName)
+    showToast(`已重命名标签：${r.affected} 个网站受影响`, 'info')
+    tagModalOpen.value = false
+    await loadAll()
+  } catch (e) { showToast(e.message, 'error') }
+}
+
+async function removeTagAll(t) {
+  if (!confirm(`从所有网站移除标签 #${t}？`)) return
+  try {
+    const r = await api.renameTag(t, '')
+    showToast(`已移除标签 #${t}（${r.affected} 个网站）`, 'info')
+    if (activeTag.value === t) activeTag.value = ''
+    await loadAll()
+  } catch (e) { showToast(e.message, 'error') }
+}
+
+// ---------- B3: bookmarklet 收藏（#add?url=… 自动填充） ----------
+const bookmarkletCode = computed(() => {
+  const base = window.location.origin
+  return `javascript:(function(){location.href='${base}/#add?url='+encodeURIComponent(location.href)})();`
+})
+
+// ---------- 邮箱验证码速取（第三轮） ----------
+const codes = ref([])
+const l2dRef = ref(null)
+const latestCode = ref(null) // 新验证码 → 看板娘 prop，组件内部 watch 触发提醒（确定性）
+let codesTimer = null
+let codesPollStarted = false
+let lastCodeNotify = ''
+
+async function loadCodes() {
+  try { codes.value = await api.mailCodes() } catch {}
+}
+
+async function pollCodesNow() {
+  // 立即刷新：触发服务器即时拉取（IMAP 直连，几秒内返回）
+  const btn = document.querySelector('.codes-refresh-btn')
+  if (btn) { btn.dataset.busy = '1'; btn.textContent = '拉取中…' }
+  try {
+    await api.mailCodesPoll()
+  } catch {}
+  await loadCodes()
+  if (btn) { delete btn.dataset.busy; btn.textContent = '立即刷新' }
+}
+
+async function pollUnreadCodes() {
+  try {
+    const unread = await api.mailCodesUnread()
+    if (!codesPollStarted) {
+      codesPollStarted = true
+      if (unread.length) api.mailCodesMarkRead().catch(() => {}) // 首次静默清历史
+      return
+    }
+    for (const c of unread) {
+      const key = `${c.sender}|${c.code}|${c.mail_time}`
+      if (key !== lastCodeNotify) {
+        lastCodeNotify = key
+        latestCode.value = { code: c.code, sender: c.sender }
+      }
+    }
+    if (unread.length) api.mailCodesMarkRead().catch(() => {})
+  } catch {}
+}
+
+async function copyCode(c) {
+  try {
+    await navigator.clipboard.writeText(c.code)
+    showToast(`验证码 ${c.code} 已复制 ✓`, 'info')
+  } catch { showToast('复制失败', 'error') }
+}
+
+async function removeCode(c) {
+  if (!confirm('删除这条验证码记录？')) return
+  try {
+    await api.deleteMailCode(c.id)
+    await loadCodes()
+  } catch (e) { showToast(e.message, 'error') }
+}
+
+function parseBookmarkHash() {
+  const h = window.location.hash || ''
+  const m = h.match(/^#add\?url=([^&]+)/)
+  if (m) {
+    try {
+      const url = decodeURIComponent(m[1])
+      view.value = 'add'
+      aiUrl.value = url
+      // 自动发起分类
+      setTimeout(() => classifyNow(), 300)
+      history.replaceState(null, '', window.location.pathname)
+    } catch {}
+  }
+}
+
 // ---------- 数据加载 ----------
 async function loadAll() {
   const [cats, siteList] = await Promise.all([api.categories(), api.sites()])
@@ -365,9 +752,9 @@ const panelIndex = computed(() => {
 // 置顶/喜欢的网站
 const likedSites = computed(() => sites.value.filter(s => s.pinned))
 
-// 每个面板内的网站（含搜索 + 标签过滤）
+// 每个面板内的网站（含搜索 + 标签过滤 + 排序）
 function panelSites(key) {
-  let list = sites.value
+  let list = sortedSites.value
   if (activeTag.value) list = list.filter(s => tagList(s).includes(activeTag.value))
   const q = search.value.trim().toLowerCase()
   if (q) {
@@ -387,10 +774,11 @@ function panelSites(key) {
   return list.filter(s => s.category_id === key)
 }
 
-// 左侧点击分类 → 平滑滚动到对应屏
+// 左侧点击分类 → 平滑滚动到对应屏（主动切换时递增动画版本号）
 function goToPanel(key) {
   currentCat.value = key
   view.value = 'home'
+  gridVersion.value++
   const el = panelsRef.value
   if (!el) return
   const idx = panels.value.findIndex(p => p.key === key)
@@ -421,6 +809,17 @@ const allTags = computed(() => {
 })
 
 const activeTag = ref('')
+
+// 标签云折叠：默认显示前 12 个，避免占满屏幕显得拥挤
+const tagsExpanded = ref(false)
+const visibleTags = computed(() =>
+  tagsExpanded.value ? allTags.value : allTags.value.slice(0, 12)
+)
+
+// 面板切换动画版本号：key 变化触发卡片 stagger 入场重放
+// 只在主动切换（goToPanel/toggleTag）时递增，滚动同步 currentCat 不触发，
+// 避免 onPanelScroll 连续滚动导致所有面板 grid 反复重建
+const gridVersion = ref(0)
 
 // 点击标签过滤
 function toggleTag(t) {
@@ -463,10 +862,19 @@ async function init() {
       await loadTopSites()
       applyBg()
       scheduleL2d()
+      parseBookmarkHash()
     }
   } catch {}
 }
-onMounted(init)
+onMounted(() => {
+  init()
+  window.addEventListener('keydown', onGlobalKey)
+  // 验证码轮询：挂载即启动（每 8 秒），首次静默标记历史，后续新码提醒看板娘
+  loadCodes()
+  clearInterval(codesTimer)
+  codesTimer = setInterval(pollUnreadCodes, 8000)
+  pollUnreadCodes()
+})
 
 async function doLogin() {
   loginError.value = ''
@@ -777,9 +1185,9 @@ function resetAi() {
   aiBusy.value = false
 }
 
-// favicon 兜底：站点没存 → DDG 公共图标服务
+// favicon 兜底：站点没存 → DDG 公共图标服务（存了 http 的一律升级 https，避免混合内容拦截）
 function faviconUrl(s) {
-  if (s.favicon) return s.favicon
+  if (s.favicon) return s.favicon.replace(/^http:\/\//i, 'https://')
   try {
     const host = new URL(s.url).hostname
     return `https://icons.duckduckgo.com/ip3/${host}.ico`
@@ -805,14 +1213,23 @@ function tagClass(t) {
   return 't' + colorIdx(t)
 }
 
-// img 加载失败：先切 DDG 兜底，DDG 也失败再隐藏
+// img 加载失败：先切 DDG 兜底 → 再切 Google s2 → 都失败则隐藏
 function faviconError(e, s) {
   const img = e.target
-  if (!img.dataset.fallback) {
+  const fb = Number(img.dataset.fallback || 0)
+  if (fb === 0) {
     img.dataset.fallback = '1'
     try {
       const host = new URL(s.url).hostname
       img.src = `https://icons.duckduckgo.com/ip3/${host}.ico`
+    } catch {
+      img.style.display = 'none'
+    }
+  } else if (fb === 1) {
+    img.dataset.fallback = '2'
+    try {
+      const host = new URL(s.url).hostname
+      img.src = `https://www.google.com/s2/favicons?domain=${host}&sz=64`
     } catch {
       img.style.display = 'none'
     }
@@ -825,453 +1242,13 @@ function hostOf(url) {
   try { return new URL(url).hostname } catch { return url }
 }
 
-const emojiPreset = [
-  '📌',
-  '🤖',
-  '💻',
-  '📰',
-  '🎬',
-  '🎮',
-  '📚',
-  '🛒',
-  '✈️',
-  '💰',
-  '🎨',
-  '🔧',
-  '🧠',
-  '🌐',
-  '🔥',
-  '⭐',
-  '❤️',
-  '💡',
-  '🎵',
-  '🎧',
-  '🎤',
-  '📷',
-  '🎥',
-  '📺',
-  '🗞️',
-  '📖',
-  '✍️',
-  '📝',
-  '🧑‍💻',
-  '👨‍💻',
-  '👩‍💻',
-  '🖥️',
-  '⌨️',
-  '🖱️',
-  '📱',
-  '💾',
-  '🕹️',
-  '🎯',
-  '🏆',
-  '🥇',
-  '🚀',
-  '🛰️',
-  '🧪',
-  '🔬',
-  '🔭',
-  '⚗️',
-  '📊',
-  '📈',
-  '📉',
-  '🧮',
-  '🗺️',
-  '🧭',
-  '⏰',
-  '🗓️',
-  '☁️',
-  '🌙',
-  '☀️',
-  '🌈',
-  '⚡',
-  '💎',
-  '🔮',
-  '🧿',
-  '🎁',
-  '🎉',
-  '🍕',
-  '🍔',
-  '☕',
-  '🍵',
-  '🐱',
-  '🐶',
-  '🦊',
-  '🐼',
-  '🐧',
-  '🦄',
-  '🐳',
-  '🐬',
-  '🦋',
-  '🌸',
-  '🌺',
-  '🍀',
-  '🌿',
-  '🪐',
-  '👾',
-  '🦾',
-  '👁️',
-  '🗣️',
-  '💬',
-  '📡',
-  '🛠️',
-  '⚙️',
-  '🔩',
-  '🧰',
-  '🗄️',
-  '📦',
-  '🖨️',
-  '📠',
-  '🔌',
-  '🔋',
-  '🔦',
-  '🏠',
-  '🏢',
-  '🏫',
-  '🏥',
-  '🏦',
-  '🏪',
-  '⛽',
-  '🚗',
-  '🚕',
-  '🚲',
-  '🛵',
-  '🛸',
-  '🛩️',
-  '🚢',
-  '🗽',
-  '🗼',
-  '🏯',
-  '⛩️',
-  '🎢',
-  '🎡',
-  '🎠',
-  '⚽',
-  '🏀',
-  '🏈',
-  '⚾',
-  '🎾',
-  '🏐',
-  '🎱',
-  '🏓',
-  '🏸',
-  '🥊',
-  '🥋',
-  '⛳',
-  '🎣',
-  '🏹',
-  '🎳',
-  '🎽',
-  '🏋️',
-  '🤸',
-  '🧗',
-  '🏄',
-  '🏊',
-  '🛹',
-  '⛸️',
-  '🎿',
-  '🪂',
-  '🏇',
-  '🚴',
-  '🧘',
-  '💃',
-  '🕺',
-  '🎭',
-  '🎪',
-  '🎼',
-  '🎹',
-  '🥁',
-  '🎷',
-  '🎺',
-  '🎸',
-  '🪕',
-  '🎻',
-  '🎲',
-  '♟️',
-  '🀄',
-  '🎴',
-  '🧩',
-  '🏅',
-  '🎖️',
-  '📯',
-  '🎫',
-  '🎟️',
-  '📻',
-  '📽️',
-  '📹',
-  '📼',
-  '🔍',
-  '🔎',
-  '🧲',
-  '🕯️',
-  '🧴',
-  '🪥',
-  '🧹',
-  '🧺',
-  '🧻',
-  '🚰',
-  '🛁',
-  '🚿',
-  '🧼',
-  '🪒',
-  '🧽',
-  '🪣',
-  '🧯',
-  '🛍️',
-  '💳',
-  '🏷️',
-  '💸',
-  '💵',
-  '💴',
-  '💶',
-  '💷',
-  '🪙',
-  '🧾',
-  '📜',
-  '📃',
-  '📄',
-  '🗂️',
-  '📁',
-  '📂',
-  '🗃️',
-  '📇',
-  '📍',
-  '📎',
-  '🖇️',
-  '📏',
-  '📐',
-  '✂️',
-  '🗒️',
-  '📆',
-  '📅',
-  '📋',
-  '📟',
-  '☎️',
-  '📞',
-  '🎙️',
-  '🕰️',
-  '⏲️',
-  '⏳',
-  '⌛',
-  '🕛',
-  '🕐',
-  '🕑',
-  '🕒',
-  '🕓',
-  '🕔',
-  '🕕',
-  '🕖',
-  '🕗',
-  '🕘',
-  '🕙',
-  '🕚',
-  '🌍',
-  '🌎',
-  '🌏',
-  '☄️',
-  '🌠',
-  '🌌',
-  '🌃',
-  '🌆',
-  '🌇',
-  '🏙️',
-  '🌉',
-  '🌁',
-  '🏞️',
-  '🏔️',
-  '⛰️',
-  '🌋',
-  '🗻',
-  '🏕️',
-  '🏖️',
-  '🏜️',
-  '🏝️',
-  '🏟️',
-  '🏛️',
-  '🏗️',
-  '🧱',
-  '🪨',
-  '🪵',
-  '🛖',
-  '🏘️',
-  '🏚️',
-  '🏡',
-  '🛤️',
-  '🛣️',
-  '🛫',
-  '🛬',
-  '🛥️',
-  '⚓',
-  '🚧',
-  '🚦',
-  '🚥',
-  '🚏',
-  '🗿',
-  '🏰',
-  '🎇',
-  '🎆',
-  '✨',
-  '🎈',
-  '🎏',
-  '🎀',
-  '🎊',
-  '🎃',
-  '🎄',
-  '🎋',
-  '🎍',
-  '🎎',
-  '🎐',
-  '🎑',
-  '🎓',
-  '🎒',
-  '🏮',
-  '🪔',
-  '🧧',
-  '📿',
-  '🪬',
-  '💠',
-  '🔷',
-  '🔶',
-  '🔹',
-  '🔸',
-  '🟦',
-  '🟪',
-  '🟥',
-  '🟧',
-  '🟨',
-  '🟩',
-  '⬛',
-  '⬜',
-  '🔲',
-  '🔳',
-  '⚪',
-  '🟫',
-  '🔴',
-  '🟠',
-  '🟡',
-  '🟢',
-  '🔵',
-  '🟣',
-  '🔘',
-  '⭕',
-  '❌',
-  '✅',
-  '⛔',
-  '🚫',
-  '⚠️',
-  '🚸',
-  '🔞',
-  '♻️',
-  '💢',
-  '💥',
-  '💫',
-  '💦',
-  '💨',
-  '🕳️',
-  '💣',
-  '💭',
-  '💤',
-  '🗯️',
-  '🫀',
-  '🫁',
-  '🦴',
-  '🦷',
-  '👅',
-  '👂',
-  '👃',
-  '👀',
-  '💅',
-  '👄',
-  '🦵',
-  '🦶',
-  '👣',
-  '👤',
-  '👥',
-  '🫂',
-  '🧑',
-  '👶',
-  '👧',
-  '🧒',
-  '👦',
-  '👩',
-  '🧑‍🦰',
-  '👨',
-  '🧔',
-  '👩‍🦰',
-  '🧕',
-  '👱',
-  '🤱',
-  '👵',
-  '🧓',
-  '👴',
-  '🧙',
-  '🧚',
-  '🧛',
-  '🧜',
-  '🧝',
-  '🧞',
-  '🧟',
-  '🧌',
-  '🧑‍🎓',
-  '👩‍🎓',
-  '👨‍🎓',
-  '🧑‍🏫',
-  '👩‍🏫',
-  '👨‍🏫',
-  '🧑‍💼',
-  '👩‍💼',
-  '👨‍💼',
-  '🧑‍🔧',
-  '👩‍🔧',
-  '👨‍🔧',
-  '🧑‍🔬',
-  '👩‍🔬',
-  '👨‍🔬',
-  '🧑‍⚕️',
-  '👩‍⚕️',
-  '👨‍⚕️',
-  '🧑‍⚖️',
-  '👩‍⚖️',
-  '👨‍⚖️',
-  '🧑‍✈️',
-  '👩‍✈️',
-  '👨‍✈️',
-  '🧑‍🚀',
-  '👩‍🚀',
-  '👨‍🚀',
-  '🧑‍🚒',
-  '👩‍🚒',
-  '👨‍🚒',
-  '🧑‍🌾',
-  '👩‍🌾',
-  '👨‍🌾',
-  '🧑‍🍳',
-  '👩‍🍳',
-  '👨‍🍳',
-  '🕴️',
-  '🧑‍🎤',
-  '👩‍🎤',
-  '👨‍🎤',
-  '🧑‍🎨',
-  '👩‍🎨',
-  '👨‍🎨',
-  '🧑‍🏭',
-  '👩‍🏭',
-  '👨‍🏭',
-  '🤵',
-  '👰',
-  '🤰',
-  '🕵️',
-  '💂',
-  '👮',
-  '👷',
-]
 </script>
 
 <template>
   <!-- 登录页 -->
   <div v-if="!loggedIn" class="login-wrap">
     <div class="login-bg"></div>
+    <ParticleBg />
     <div class="login-mask"></div>
     <div class="card login-card">
       <div class="login-logo"><Compass :size="34" stroke-width="2.2" /></div>
@@ -1288,10 +1265,57 @@ const emojiPreset = [
   <!-- 主界面 -->
   <div v-else class="shell">
     <!-- 全局二次元机器人（延迟挂载：优先保证主界面加载速度，3s 后再拉 660KB Live2D 分包） -->
-    <Live2dAssistant v-if="l2dReady" :is-admin="isAdmin" @saved="loadAll" />
+    <Live2dAssistant ref="l2dRef" v-if="l2dReady" :is-admin="isAdmin" :new-code="latestCode" @saved="loadAll" />
 
     <!-- Toast 提示 -->
     <div v-if="toast.msg" class="toast" :class="toast.type">{{ toast.msg }}</div>
+
+    <!-- 卡片 hover 网站截图预览（桌面端） -->
+    <div v-if="previewSite && !isMobile && !selectMode" class="shot-preview" :style="{ left: previewPos.x + 'px', top: previewPos.y + 'px' }" @mouseenter="clearTimeout(previewTimer)" @mouseleave="hidePreview">
+      <img v-if="shotUrl(previewSite)" :src="shotUrl(previewSite)" loading="lazy" alt="" />
+      <div class="shot-preview-title">{{ previewSite.title || hostOf(previewSite.url) }}</div>
+    </div>
+    <!-- Cmd/Ctrl+K 全局命令面板 -->
+    <Transition name="palette">
+      <div v-if="paletteOpen" class="palette-mask" @click.self="closePalette">
+        <div class="palette">
+          <div class="palette-input-row">
+            <Search :size="15" />
+            <input
+              ref="paletteInputRef"
+              v-model="paletteQuery"
+              class="palette-input"
+              placeholder="搜索网站 / 分类 / 标签…   （#标签）"
+              @keydown="onPaletteKey"
+            />
+            <kbd class="palette-kbd">ESC</kbd>
+          </div>
+          <div v-if="paletteResults.length" class="palette-list">
+            <div v-if="paletteWebBusy" class="palette-loading"><span class="spinner" style="width: 12px; height: 12px;"></span> 正在搜索互联网…</div>
+            <button
+              v-for="(item, idx) in paletteResults"
+              :key="idx"
+              class="palette-item"
+              :class="{ active: idx === paletteIndex, 'palette-item--web': item.type === 'web' }"
+              @mouseenter="paletteIndex = idx"
+              @click="runPaletteItem(item)"
+            >
+              <span class="palette-item-icon">
+                <Globe v-if="item.type === 'site'" :size="14" />
+                <FolderOpen v-else-if="item.type === 'cat'" :size="14" />
+                <Tag v-else-if="item.type === 'tag'" :size="14" />
+                <Search v-else-if="item.type === 'web'" :size="14" />
+                <Zap v-else :size="14" />
+              </span>
+              <span class="palette-item-label">{{ item.label }}</span>
+              <span class="palette-item-hint">{{ item.type === 'web' ? '全网 · ' + hostOf(item.url) : item.hint }}</span>
+              <ArrowUpRight v-if="item.type === 'site' || item.type === 'web'" :size="12" class="palette-item-open" />
+            </button>
+          </div>
+          <div v-else class="palette-empty">没有匹配的结果</div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- 移动端抽屉遮罩 -->
     <div v-if="sidebarOpen" class="drawer-mask" @click="closeSidebar"></div>
@@ -1337,7 +1361,7 @@ const emojiPreset = [
           @click="goToPanel(c.id); closeSidebar()"
         >
           <span style="cursor: grab;">⠿</span>
-          <span>{{ c.icon || '📌' }}</span>
+          <span class="nav-ico" style="display: inline-flex;"><component :is="catIcon(c.icon)" :size="14" /></span>
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">{{ c.name }}</span>
           <span class="count">{{ c.site_count }}</span>
           <span v-if="isAdmin" class="cat-actions">
@@ -1356,6 +1380,8 @@ const emojiPreset = [
         <div class="sidebar-actions">
           <button v-if="isAdmin" class="btn" @click="openSettings"><span class="btn-ico"><Settings :size="13" /></span> 设置</button>
           <button class="btn btn-sm" :class="{ active: view === 'notes' }" @click="view = 'notes'; closeSidebar()"><span class="btn-ico"><NotebookPen :size="13" /></span> 便签</button>
+          <button class="btn btn-sm" :class="{ active: view === 'tags' }" @click="view = 'tags'; closeSidebar()"><span class="btn-ico"><Tag :size="13" /></span> 标签管理</button>
+          <button class="btn btn-sm" :class="{ active: view === 'codes' }" @click="view = 'codes'; closeSidebar(); loadCodes()"><span class="btn-ico"><KeyRound :size="13" /></span> 验证码</button>
           <button class="btn btn-sm" :class="{ active: view === 'monitor' }" @click="view = 'monitor'; closeSidebar()"><span class="btn-ico"><Activity :size="13" /></span> 服务器</button>
         </div>
         <div v-if="!isAdmin" class="viewer-badge"><span class="btn-ico"><Eye :size="12" /></span> 访客模式 · 导航仅可查看</div>
@@ -1366,9 +1392,11 @@ const emojiPreset = [
     <!-- 主内容 -->
     <main class="main">
       <div class="content">
+        <!-- 视图切换：key=view 触发重建 + 进入动画（不用 out-in，避免离开动画卡死） -->
+          <div class="view-root" :key="view">
         <!-- 首页视图：滑动分屏 -->
         <template v-if="view === 'home'">
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0 10px; flex-shrink: 0;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; flex-shrink: 0;">
             <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
               <button class="btn sidebar-burger" @click="toggleSidebar" title="菜单" aria-label="打开菜单">
                 <Menu :size="15" />
@@ -1378,7 +1406,12 @@ const emojiPreset = [
                 <div class="subtitle">{{ panelSites(currentCat).length }} 个网站 · {{ isMobile ? '滑动切换分类' : '滚动鼠标滚轮切换分类' }}</div>
               </div>
             </div>
-            <div v-if="isAdmin" style="display: flex; gap: 8px;">
+            <div v-if="isAdmin" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+              <button class="btn btn-sm" :class="{ active: sortMode === 'recent' }" :title="'排序：' + (sortMode === 'recent' ? '最近添加' : '默认')" @click="sortMode = sortMode === 'recent' ? 'default' : 'recent'">
+                <Clock :size="12" /> {{ sortMode === 'recent' ? '最近添加' : '默认排序' }}
+              </button>
+              <button class="btn btn-sm" title="随机逛一个" @click="randomSite"><Dices :size="12" /> 随机</button>
+              <button v-if="!selectMode" class="btn btn-sm" title="批量管理" @click="enterSelectMode"><CheckSquare :size="12" /> 批量</button>
               <button v-if="currentCat !== 'all' && currentCat !== 'uncat' && currentCat !== 'likes'" class="btn" @click="openEditCat(categories.find(c => c.id === currentCat))">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 编辑分类
@@ -1391,16 +1424,30 @@ const emojiPreset = [
             </div>
           </div>
 
+          <!-- 批量操作工具栏 -->
+          <div v-if="selectMode" class="bulk-bar" style="flex-shrink: 0;">
+            <span class="bulk-count">已选 {{ selectedCount }} 个</span>
+            <select class="input bulk-cat-select" @change="bulkMoveToCat(Number($event.target.value)); $event.target.value = ''">
+              <option value="">移动到分类…</option>
+              <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <button class="btn btn-sm btn-danger" @click="bulkDelete"><Trash2 :size="12" /> 删除</button>
+            <button class="btn btn-sm" @click="exitSelectMode"><X :size="12" /> 取消</button>
+          </div>
+
           <!-- 标签条 -->
           <div v-if="allTags.length" class="tag-bar" style="flex-shrink: 0;">
             <span class="tag-bar-label"><Tags :size="12" /></span> 标签
             <button
-              v-for="[t, n] in allTags"
+              v-for="[t, n] in visibleTags"
               :key="t"
               class="tag-chip"
               :class="{ active: activeTag === t }"
               @click="toggleTag(t)"
             >#{{ t }} <span class="tag-count">{{ n }}</span></button>
+            <button v-if="allTags.length > 12" class="tag-more" @click="tagsExpanded = !tagsExpanded">
+              {{ tagsExpanded ? '收起' : `+${allTags.length - 12} 更多` }}
+            </button>
             <button v-if="activeTag" class="tag-clear" @click="activeTag = ''"><X :size="11" style="vertical-align: -1px;" /> 清除</button>
           </div>
 
@@ -1418,44 +1465,54 @@ const emojiPreset = [
                 <div>{{ p.key === 'likes' ? '还没有喜欢的网站，点卡片上的星标收藏' : (p.name === '全部' ? '还没有收藏网站' : '这个分类还没有网站') }}</div>
                 <button v-if="isAdmin" class="btn btn-primary btn-sm" @click="view = 'add'">用 AI 添加一个</button>
               </div>
-              <div v-else class="site-grid">
+              <div v-else class="site-grid anim" :key="'g' + p.key + '-' + gridVersion">
                 <div
-                  v-for="s in panelSites(p.key)"
+                  v-for="(s, i) in panelSites(p.key)"
                   :key="s.id"
-                  class="card site-card"
-                  :class="{ pinned: s.pinned }"
-                  :draggable="isAdmin ? 'true' : 'false'"
-                  @dragstart="isAdmin && onSiteDragStart(s)"
-                  @dragover="isAdmin && onSiteDragOver($event, s)"
-                  @drop="isAdmin && onSiteDrop"
-                  @click="openSite(s)"
+                  class="card site-card enter"
+                  :class="{ pinned: s.pinned, 'selecting': selectMode, selected: selectedIds.has(s.id) }"
+                  :style="{ animationDelay: (i % 16) * 36 + 'ms' }"
+                  :draggable="isAdmin && !selectMode ? 'true' : 'false'"
+                  @dragstart="isAdmin && !selectMode && onSiteDragStart(s)"
+                  @dragover="isAdmin && !selectMode && onSiteDragOver($event, s)"
+                  @drop="isAdmin && !selectMode && onSiteDrop"
+                  @click="selectMode ? toggleSelect(s) : openSite(s)"
+                  @mouseenter="showPreview($event, s)"
+                  @mouseleave="hidePreview"
                 >
                   <div v-if="isAdmin" class="site-card__actions">
-                    <button class="site-act-btn" :class="{ 'pin-active': s.pinned }" :title="s.pinned ? '取消置顶' : '置顶'" @click.stop="togglePin(s)">
+                    <button v-if="!selectMode" class="site-act-btn" :class="{ 'pin-active': s.pinned }" :title="s.pinned ? '取消置顶' : '置顶'" @click.stop="togglePin(s)">
                       <Star :size="11" :fill="s.pinned ? 'currentColor' : 'none'" />
                     </button>
-                    <button class="site-act-btn" title="编辑" @click.stop="openEditSite(s)">
+                    <button v-if="!selectMode" class="site-act-btn" title="编辑" @click.stop="openEditSite(s)">
                       <Pencil :size="11" />
                     </button>
-                    <button class="site-act-btn danger" title="删除" @click.stop="removeSite(s)">
+                    <button v-if="!selectMode" class="site-act-btn danger" title="删除" @click.stop="removeSite(s)">
                       <Trash2 :size="11" />
                     </button>
+                    <button v-else class="site-act-btn" :class="{ 'pin-active': selectedIds.has(s.id) }" title="选择">
+                      <CheckSquare :size="11" :fill="selectedIds.has(s.id) ? 'currentColor' : 'none'" />
+                    </button>
+                  </div>
+                  <div v-if="selectMode" class="select-check" :class="{ on: selectedIds.has(s.id) }">
+                    <CheckSquare :size="13" :fill="selectedIds.has(s.id) ? 'currentColor' : 'none'" />
                   </div>
                   <div class="title">
                     <span class="favicon" :class="faviconClass(s)">
                       <img v-if="faviconUrl(s)" :src="faviconUrl(s)" loading="lazy" @error="faviconError($event, s)" />
                       <span v-if="!faviconUrl(s)"><Globe :size="14" style="color: var(--text-tertiary);" /></span>
                     </span>
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.title }}</span>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.title || hostOf(s.url) }}</span>
                   </div>
-                  <div class="desc">{{ s.description || '暂无描述' }}</div>
+                  <div class="desc">{{ s.description || '点击访问 ↗' }}</div>
                   <div v-if="tagList(s).length" class="site-tags">
                     <span v-for="t in tagList(s)" :key="t" class="site-tag" :class="tagClass(t)" @click.stop="toggleTag(t)">#{{ t }}</span>
                   </div>
                   <div class="meta">
                     <span v-if="s.status === 'down'" class="site-dead" title="检测于 {{ s.status_at }}"><TriangleAlert :size="10" style="vertical-align: -1px;" /> 已失效</span>
-                    {{ hostOf(s.url) }} ↗
+                    {{ hostOf(s.url) }}
                   </div>
+                  <span class="open-arrow"><ArrowUpRight :size="13" /></span>
                 </div>
               </div>
             </section>
@@ -1463,6 +1520,7 @@ const emojiPreset = [
 
           <!-- 分屏指示器 -->
           <div class="panel-dots" style="flex-shrink: 0;">
+            <span class="panel-counter">{{ panelIndex + 1 }} / {{ panels.length }}</span>
             <button
               v-for="(p, i) in panels"
               :key="p.key"
@@ -1473,8 +1531,8 @@ const emojiPreset = [
             ></button>
           </div>
 
-          <!-- 滚动提示 -->
-          <div class="scroll-hint">
+          <!-- 滚动提示（仅桌面） -->
+          <div v-if="!isMobile" class="scroll-hint">
             <span>滚轮</span>
             <ChevronDown :size="15" />
           </div>
@@ -1482,7 +1540,7 @@ const emojiPreset = [
 
         <!-- AI 添加视图 -->
         <template v-else-if="view === 'add'">
-          <div style="padding: 12px 0 14px;">
+          <div style="padding: 18px 0 16px;">
             <div class="page-title">AI 添加网站</div>
             <div class="subtitle">粘贴网址，AI 根据内容自动分类</div>
           </div>
@@ -1540,7 +1598,7 @@ const emojiPreset = [
                     class="chip"
                     :class="{ selected: !aiPickNew && aiPickCategory === c.name }"
                     @click="aiPickNew = false; aiPickCategory = c.name"
-                  >{{ c.icon || '📌' }} {{ c.name }}</button>
+                  ><component :is="catIcon(c.icon)" :size="12" style="vertical-align: -2px; margin-right: 3px;" /> {{ c.name }}</button>
                   <button class="chip" :class="{ selected: aiPickNew }" @click="aiPickNew = true; aiPickCategory = null">
                     <Plus :size="11" style="vertical-align: -1px; margin-right: 3px;" /> 新建分类
                   </button>
@@ -1574,7 +1632,7 @@ const emojiPreset = [
 
         <!-- 便签视图 -->
         <template v-else-if="view === 'notes'">
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0 10px; flex-shrink: 0;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; flex-shrink: 0;">
             <div>
               <div class="page-title"><NotebookPen :size="17" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;" /> 便签</div>
               <div class="subtitle">{{ notes.length }} 条 · 拖拽排序，随手记</div>
@@ -1646,10 +1704,68 @@ const emojiPreset = [
           </div>
         </template>
 
+        <!-- 标签管理视图 -->
+        <template v-else-if="view === 'tags'">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; flex-shrink: 0;">
+            <div>
+              <div class="page-title"><Tag :size="17" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;" /> 标签管理</div>
+              <div class="subtitle">{{ allTags.length }} 个标签 · 重命名 / 移除</div>
+            </div>
+          </div>
+          <div class="scroll-region" style="flex: 1; padding-top: 4px;">
+            <div v-if="allTags.length === 0" class="empty">
+              <Tags :size="34" stroke-width="1.4" style="color: var(--text-tertiary);" />
+              <div>还没有标签</div>
+            </div>
+            <div v-else class="tag-manage-grid">
+              <div v-for="[t, n] in allTags" :key="t" class="card tag-manage-item">
+                <span class="tag-manage-name" :class="tagClass(t)">#{{ t }}</span>
+                <span class="tag-manage-count">{{ n }} 个网站</span>
+                <div class="tag-manage-actions">
+                  <button class="btn btn-sm" @click="openTagManage(t)"><Pencil :size="11" /> 重命名</button>
+                  <button class="btn btn-sm danger" @click="removeTagAll(t)"><Trash2 :size="11" /> 移除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- 邮箱验证码视图 -->
+        <template v-else-if="view === 'codes'">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; flex-shrink: 0;">
+            <div>
+              <div class="page-title"><KeyRound :size="17" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;" /> 邮箱验证码</div>
+              <div class="subtitle">自动抓取 QQ 邮箱验证码 · 每 90 秒刷新</div>
+            </div>
+            <button class="btn codes-refresh-btn" @click="pollCodesNow"><RefreshCw :size="13" /> 立即刷新</button>
+          </div>
+          <div class="scroll-region" style="flex: 1; padding-top: 4px;">
+            <div v-if="codes.length === 0" class="empty">
+              <KeyRound :size="34" stroke-width="1.4" style="color: var(--text-tertiary);" />
+              <div>还没有验证码记录，收到验证码邮件后会自动出现在这里</div>
+            </div>
+            <div v-else class="code-list">
+              <div v-for="c in codes" :key="c.id" class="card code-item">
+                <div class="code-main">
+                  <span class="code-value">{{ c.code }}</span>
+                  <button class="site-act-btn" title="复制" @click="copyCode(c)"><Copy :size="12" /></button>
+                  <button v-if="isAdmin" class="site-act-btn danger" title="删除" @click="removeCode(c)"><Trash2 :size="12" /></button>
+                </div>
+                <div class="code-meta">
+                  <span v-if="c.sender" class="code-sender">{{ c.sender }}</span>
+                  <span v-if="c.subject" class="code-subject">{{ c.subject }}</span>
+                  <span class="code-time">{{ (c.fetched_at || c.mail_time || '').slice(5, 16) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
         <!-- 服务器监控视图 -->
         <template v-else-if="view === 'monitor'">
           <MonitorView />
         </template>
+          </div>
       </div>
     </main>
 
@@ -1659,11 +1775,18 @@ const emojiPreset = [
         <div class="modal-title">{{ catModalMode === 'create' ? '新建分类' : '编辑分类' }}</div>
         <label class="modal-label">名称</label>
         <input v-model="catModalName" class="input" placeholder="如：AI 工具" autofocus />
-        <label class="modal-label">图标（emoji）</label>
-        <input v-model="catModalIcon" class="input" placeholder="如：🤖" maxlength="4" />
-        <div class="emoji-preset">
-          <button v-for="e in emojiPreset" :key="e" class="emoji-btn" :class="{ selected: catModalIcon === e }" @click="catModalIcon = e">{{ e }}</button>
+        <label class="modal-label">图标</label>
+        <div class="icon-preset">
+          <button
+            v-for="ic in ICON_CHOICES"
+            :key="ic.name"
+            class="icon-btn"
+            :class="{ selected: catModalIcon === ic.name }"
+            :title="ic.name"
+            @click="catModalIcon = ic.name"
+          ><component :is="ic.comp" :size="16" /></button>
         </div>
+        <input v-model="catModalIcon" class="input" placeholder="或直接输入图标名 / emoji（如 rocket、🤖）" style="margin-top: 4px;" />
         <div class="modal-actions" v-if="catModalMode === 'edit'" style="justify-content: space-between;">
           <button class="btn btn-danger" @click="removeCategory({ id: catEditId, name: catModalName }); showCatModal = false">删除分类</button>
           <div style="display: flex; gap: 8px;">
@@ -1694,11 +1817,22 @@ const emojiPreset = [
         <div class="modal-hint" style="margin-bottom: 16px;">支持 NavHub JSON 备份 或 浏览器导出的书签 HTML（自动识别）</div>
 
         <div class="modal-label">网站健康</div>
-        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
           <button v-if="isAdmin" class="btn" style="flex: 1; justify-content: center;" @click="runHealthCheck" :disabled="healthChecking">
             {{ healthChecking ? '检测中…' : '🩺 立即检测失效网站' }}
           </button>
         </div>
+        <div class="modal-hint" style="margin-bottom: 14px;">服务器每 6 小时自动检测一次，失效网站自动标记「已失效」</div>
+
+        <div class="modal-label">界面密度</div>
+        <div style="display: flex; gap: 6px; margin-bottom: 14px;">
+          <button class="btn btn-sm" :class="{ active: density === 'comfort' }" @click="applyDensity('comfort')">舒适</button>
+          <button class="btn btn-sm" :class="{ active: density === 'compact' }" @click="applyDensity('compact')">紧凑</button>
+        </div>
+
+        <div class="modal-label">收藏到导航（书签小工具）</div>
+        <div class="modal-hint" style="margin-bottom: 6px;">把下面按钮拖到浏览器书签栏，浏览任意网页时点击即可收藏到 NavHub：</div>
+        <div class="bookmarklet-box">{{ bookmarkletCode }}</div>
 
         <div v-if="topSites.length" class="modal-label" style="margin-top: 4px;">热门网站 TOP {{ Math.min(topSites.length, 5) }}</div>
         <div v-if="topSites.length" class="top-list" style="margin-bottom: 12px;">
@@ -1727,6 +1861,21 @@ const emojiPreset = [
       </div>
     </div>
 
+    <!-- 标签重命名弹窗 -->
+    <div v-if="tagModalOpen" class="modal-mask" @click.self="tagModalOpen = false">
+      <div class="card modal" style="max-width: 360px;">
+        <div class="modal-title"><Tag :size="13" style="vertical-align: -2px; margin-right: 4px;" /> 重命名标签</div>
+        <label class="modal-label">原标签</label>
+        <div class="tag-rename-old">#{{ tagManage.name }}</div>
+        <label class="modal-label">新名称</label>
+        <input v-model="tagManage.newName" class="input" placeholder="新标签名" @keyup.enter="saveTagRename" />
+        <div class="modal-actions">
+          <button class="btn" @click="tagModalOpen = false">取消</button>
+          <button class="btn btn-primary" @click="saveTagRename" :disabled="!tagManage.newName.trim()">保存</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 网站弹窗 -->
     <div v-if="showSiteModal" class="modal-mask" @click.self="showSiteModal = false">
       <div class="card modal">
@@ -1743,7 +1892,7 @@ const emojiPreset = [
         <label class="modal-label">分类</label>
         <select v-model="siteModal.category_id" class="input">
           <option :value="null">未分类</option>
-          <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.icon || '📌' }} {{ c.name }}</option>
+          <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
         <label class="modal-label">描述</label>
         <textarea v-model="siteModal.description" class="input" rows="2" placeholder="可选"></textarea>
@@ -1846,11 +1995,14 @@ const emojiPreset = [
   align-items: center;
   position: relative;
   z-index: 2;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(250, 251, 253, 0.88));
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
   border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 8px 32px rgba(30, 20, 10, 0.18), 0 2px 8px rgba(30, 20, 10, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 8px 32px rgba(30, 20, 10, 0.20), 0 2px 8px rgba(30, 20, 10, 0.10),
+    0 40px 120px -24px rgba(37, 99, 235, 0.18);
+  animation: rise-in 0.6s var(--ease-out) both;
 }
 .login-logo { font-size: 40px; }
 .login-title { font-size: 22px; font-weight: 600; margin-top: 8px; color: var(--text-primary); }
@@ -1858,8 +2010,10 @@ const emojiPreset = [
 
 /* 深色模式下登录卡片适配 */
 [data-theme="dark"] .login-card {
-  background: rgba(24, 26, 32, 0.88);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(24, 27, 33, 0.94), rgba(17, 18, 22, 0.9));
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 32px rgba(0, 0, 0, 0.5), 0 40px 120px -24px rgba(78, 151, 255, 0.18);
 }
 
 .site-dead {
@@ -1903,13 +2057,15 @@ const emojiPreset = [
   background: transparent;
   border: none;
   font-size: 16px;
-  padding: 4px;
+  padding: 5px;
   border-radius: var(--radius-sm);
+  transition: background var(--dur) var(--ease-out), transform var(--dur-slow) var(--ease-spring);
 }
-.theme-toggle:hover { background: var(--bg-hover); }
+.theme-toggle:hover { background: var(--bg-hover); transform: rotate(24deg) scale(1.08); }
+.theme-toggle:active { transform: rotate(360deg) scale(0.9); }
 .sidebar-search { padding: 0 12px 8px; }
 .sidebar-divider { height: 1px; background: var(--border); margin: 6px 12px; }
-.sidebar-footer { padding: 12px 12px 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.sidebar-footer { padding: 12px 12px 14px; border-top: 1px solid var(--border); box-shadow: inset 0 1px 0 var(--hairline); display: flex; flex-direction: column; gap: 8px; }
 
 .viewer-badge {
   font-size: 11px;
@@ -1964,28 +2120,68 @@ const emojiPreset = [
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35);
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
-.modal { width: 380px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.modal {
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-surface-gradient);
+  box-shadow: var(--shadow-pop), inset 0 1px 0 var(--hairline);
+  animation: rise-in 0.28s var(--ease-out) both;
+}
 .modal-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .modal-label { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 .modal-hint { font-size: 11px; color: var(--text-tertiary); }
-.modal-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: var(--text-tertiary); cursor: pointer; font-size: 14px; }
-.modal-close:hover { color: var(--text-primary); }
+.modal-close {
+  position: sticky;
+  top: 0;
+  align-self: flex-end;
+  z-index: 5;
+  margin-top: -14px;
+  margin-bottom: -26px;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.modal-close:hover { color: var(--text-primary); background: var(--bg-hover); }
 .modal { position: relative; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-.emoji-preset {
+.icon-preset {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 150px;
+  max-height: 156px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 2px 4px 4px 2px;
 }
-.emoji-btn {
-  width: 30px; height: 30px; border-radius: var(--radius-sm);
-  border: 1px solid var(--border); background: var(--bg-muted); font-size: 15px;
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-fast) var(--ease-out);
 }
-.emoji-btn:hover { background: var(--bg-hover); }
-.emoji-btn.selected { border-color: var(--primary); background: var(--bg-selected); }
+.icon-btn:hover { background: var(--bg-hover); color: var(--primary); transform: scale(1.1); }
+.icon-btn.selected { border-color: var(--primary); background: var(--bg-selected); color: var(--primary); }
 
 /* spinner */
 .spinner {

@@ -128,7 +128,7 @@ def _parse_json(content: str) -> dict:
 # ---------- 机器人聊天（AI + 基于导航推荐） ----------
 
 CHAT_SYSTEM_TEMPLATE = """你是 NavHub 导航站的二次元助手「小导航」，性格活泼可爱，说话简短自然，用中文回复。
-用户的个人导航里收藏了这些网站（格式：分类 | 标题 | 描述 | URL | 标签）：
+用户的个人导航里收藏了这些网站（格式：分类 | 标题 | URL）：
 
 {site_list}
 
@@ -139,8 +139,7 @@ CHAT_SYSTEM_TEMPLATE = """你是 NavHub 导航站的二次元助手「小导航�
 4. 不要编造收藏里不存在的 URL 细节，不要输出 markdown 表格。
 
 【推荐类问题的输出格式（重要）】
-当用户请求推荐网站时，这样排版（只输出这些内容，不要多余的话）：
-推荐语（一行，简短可爱）
+当用户请求推荐网站时，直接输出推荐内容，不要卡片，不要 JSON，不要“给你找到几个好去处”这类开头：
 网站名称：一句话理由
 https://完整网址
 （每个推荐之间空一行，1-3 个推荐）"""
@@ -154,8 +153,8 @@ def chat(message: str, history: list[dict], sites: list[dict]) -> dict:
         return {"reply": "哎呀，AI 没配置好，暂时只能陪你唠嗑～", "sites": []}
 
     site_lines = []
-    for s in sites[:150]:
-        # 只带标题+URL，不塞描述/标签（token 少、响应快）
+    for s in sites[:120]:
+        # 只带标题+URL，响应更快
         site_lines.append(f"- {s.get('category_name') or '未分类'} | {s.get('title')} | {s.get('url')}")
     if not site_lines:
         site_lines.append("（收藏还是空的）")
@@ -181,9 +180,8 @@ def chat(message: str, history: list[dict], sites: list[dict]) -> dict:
             json={
                 "model": AI_MODEL,
                 "messages": messages,
-                "temperature": 0.6,
-                "max_tokens": 300,
-                "stream": False,
+                "temperature": 0.7,
+                "max_tokens": 800,
             },
             timeout=30.0,
         )

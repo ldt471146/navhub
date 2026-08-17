@@ -91,4 +91,12 @@ export const api = {
   healthCheck: () => req('POST', '/api/health-check'),
   clickSite: (site_id) => req('POST', '/api/sites/click', { site_id }),
   topSites: () => req('GET', '/api/sites/top'),
+  moveBulk: (site_ids, category_id) => req('POST', '/api/sites/move-bulk', { site_ids, category_id }),
+  renameTag: (oldTag, newTag) => req('POST', '/api/tags/rename', { old: oldTag, new: newTag }),
+  mailCodes: () => req('GET', '/api/mail/codes'),
+  mailCodesUnread: () => req('GET', '/api/mail/codes/unread'),
+  mailCodesPoll: () => req('POST', '/api/mail/codes/poll'),
+  mailCodesMarkRead: () => req('POST', '/api/mail/codes/mark-read'),
+  deleteMailCode: (id) => req('DELETE', `/api/mail/codes/${id}`),
+  searchWeb: (query, maxResults = 5) => req('POST', '/api/search', { query, max_results: maxResults }),
 }

@@ -55,6 +55,15 @@ def init_db() -> None:
                 created_at TEXT DEFAULT (datetime('now', 'localtime')),
                 updated_at TEXT DEFAULT (datetime('now', 'localtime'))
             );
+            CREATE TABLE IF NOT EXISTS mail_codes (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender     TEXT DEFAULT '',
+                subject    TEXT DEFAULT '',
+                code       TEXT NOT NULL,
+                mail_time  TEXT DEFAULT '',
+                fetched_at TEXT DEFAULT (datetime('now', 'localtime')),
+                is_read    INTEGER DEFAULT 0
+            );
             """
         )
         # 迁移：老库补 tags 列
@@ -317,3 +326,50 @@ def update_note(nid: int, content: str) -> bool:
 
 def delete_note(nid: int) -> None:
     _exec("DELETE FROM notes WHERE id = ?", (nid,))
+
+
+# ---------- mail_codes（邮箱验证码速取） ----------
+
+def add_mail_code(sender: str, subject: str, code: str, mail_time: str = "") -> bool:
+    """新增验证码记录；同 sender+code+mail_time 视为重复，返回是否新增。"""
+    rows = _q(
+        "SELECT id FROM mail_codes WHERE sender = ? AND code = ? AND mail_time = ?",
+        (sender, code, mail_time),
+    )
+    if rows:
+        return False
+    _exec(
+        "INSERT INTO mail_codes (sender, subject, code, mail_time) VALUES (?, ?, ?, ?)",
+        (sender, subject, code, mail_time),
+    )
+    return True
+
+
+def list_mail_codes(limit: int = 20) -> list[dict]:
+    rows = _q("SELECT * FROM mail_codes ORDER BY id DESC LIMIT ?", (limit,))
+    return [dict(r) for r in rows]
+
+
+def unread_mail_codes() -> list[dict]:
+    rows = _q("SELECT * FROM mail_codes WHERE is_read = 0 ORDER BY id DESC LIMIT 10")
+    return [dict(r) for r in rows]
+
+
+def mark_mail_codes_read() -> None:
+    _exec("UPDATE mail_codes SET is_read = 1 WHERE is_read = 0")
+
+
+def delete_mail_code(cid: int) -> None:
+    _exec("DELETE FROM mail_codes WHERE id = ?", (cid,))
+
+
+def cleanup_mail_codes(hours: int = 48, keep: int = 3) -> None:
+    """验证码只用一次：清理超过 hours 小时的记录，且最多保留 keep 条（默认最近 3 条）。"""
+    _exec(
+        "DELETE FROM mail_codes WHERE fetched_at < datetime('now', 'localtime', ?)",
+        (f"-{int(hours)} hours",),
+    )
+    _exec(
+        "DELETE FROM mail_codes WHERE id NOT IN (SELECT id FROM mail_codes ORDER BY id DESC LIMIT ?)",
+        (int(keep),),
+    )

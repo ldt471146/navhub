@@ -5,7 +5,9 @@ import threading
 import time
 from pathlib import Path
 
-from fastapi import Cookie, FastAPI, HTTPException, Request
+import httpx
+
+from fastapi import Cookie, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +18,7 @@ import auth
 import checker
 import db
 import fetch
+import mail as mailmod
 import sysinfo
 
 app = FastAPI(title="NavHub", docs_url=None, redoc_url=None)
@@ -71,6 +74,29 @@ class SitePatch(BaseModel):
     pinned: bool | None = None
 
 
+class TagRenameIn(BaseModel):
+    old: str
+    new: str = ""  # 空字符串 = 从所有站点移除该标签
+
+
+class BulkMoveIn(BaseModel):
+    site_ids: list[int]
+    category_id: int | None = None
+
+
+class MailCodeIn(BaseModel):
+    sender: str = ""
+    subject: str = ""
+    code: str
+    mail_time: str = ""
+
+
+class SearchIn(BaseModel):
+    query: str
+    max_results: int = 5
+    include_answer: bool = True
+
+
 class ClassifyIn(BaseModel):
     url: str
 
@@ -103,14 +129,32 @@ def require_admin(session: str | None) -> None:
 
 
 @app.post("/api/auth/login")
-def login(body: LoginIn, response: JSONResponse):
+def login(body: LoginIn, request: Request, response: JSONResponse):
+    ip = _client_ip(request)
+    locked, remain = auth.login_locked(ip)
+    if locked:
+        raise HTTPException(
+            status_code=429,
+            detail=f"尝试过于频繁，请 {int(remain // 60) + 1} 分钟后重试",
+        )
     role = auth.verify_password(body.password)
     if not role:
+        auth.record_login_fail(ip)
         raise HTTPException(status_code=401, detail="密码错误")
+    auth.record_login_ok(ip)
+    auth.cleanup_sessions()
     token = auth.create_session(role)
     resp = JSONResponse({"ok": True, "role": role})
     resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=86400 * 90, path="/")
     return resp
+
+
+def _client_ip(request: Request) -> str:
+    """经 nginx 反代取真实客户端 IP（信任 X-Forwarded-For，8001 仅本机监听）。"""
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 @app.get("/api/auth/me")
@@ -222,6 +266,147 @@ def delete_site(sid: int, session: str | None = Cookie(default=None)):
     require_admin(session)
     db.delete_site(sid)
     return {"ok": True}
+
+
+# ---------- 批量操作（第二轮升级） ----------
+
+@app.post("/api/sites/move-bulk")
+def move_sites_bulk(body: BulkMoveIn, session: str | None = Cookie(default=None)):
+    """批量移动分类：单次更新多个站点。"""
+    require_admin(session)
+    if not body.site_ids:
+        raise HTTPException(status_code=400, detail="site_ids 不能为空")
+    for sid in body.site_ids:
+        db.update_site(sid, category_id=body.category_id)
+    return {"ok": True, "moved": len(body.site_ids)}
+
+
+@app.post("/api/tags/rename")
+def rename_tag(body: TagRenameIn, session: str | None = Cookie(default=None)):
+    """标签重命名（new 为空 = 移除）：遍历所有站点更新 tags。"""
+    require_admin(session)
+    old = body.old.strip()
+    if not old:
+        raise HTTPException(status_code=400, detail="标签不能为空")
+    new = body.new.strip()
+    sites = db.list_sites()
+    affected = 0
+    for s in sites:
+        tags = [t.strip() for t in (s.get("tags") or "").split(",") if t.strip()]
+        if old in tags:
+            if new:
+                tags = [new if t == old else t for t in tags]
+            else:
+                tags = [t for t in tags if t != old]
+            db.update_site(s["id"], tags=",".join(tags))
+            affected += 1
+    return {"ok": True, "affected": affected}
+
+
+# ---------- 邮箱验证码速取（第三轮） ----------
+
+MAIL_INGEST_KEY = os.environ.get("NAVHUB_MAIL_INGEST_KEY", "navhub-mail-ingest-2026")
+
+# 全网搜索代理（Tavily Hikari，key 只存服务器）
+SEARCH_URL = os.environ.get("NAVHUB_SEARCH_URL", "https://search.diecast.cloud/api/tavily/search")
+SEARCH_KEY = os.environ.get("NAVHUB_SEARCH_KEY", "")
+
+# IMAP 直连（第三轮升级：服务器端直接拉取 QQ 邮箱，无需本机脚本）
+MAIL_USER = os.environ.get("NAVHUB_MAIL_USER", "")
+MAIL_CODE = os.environ.get("NAVHUB_MAIL_CODE", "")
+MAIL_INTERVAL = float(os.environ.get("NAVHUB_MAIL_INTERVAL", "15"))
+
+_mail_fetcher = None
+if MAIL_USER and MAIL_CODE:
+    try:
+        _mail_fetcher = mailmod.MailFetcher(MAIL_USER, MAIL_CODE, MAIL_INTERVAL)
+        _mail_fetcher.start()
+    except Exception as e:
+        print(f"[navhub] IMAP fetcher init failed: {e}", flush=True)
+
+
+@app.post("/api/mail/codes/ingest")
+def mail_codes_ingest(body: MailCodeIn, key: str = Query(default="")):
+    """本机抓取脚本上报验证码（密钥保护）。"""
+    if key != MAIL_INGEST_KEY:
+        raise HTTPException(status_code=403, detail="key 错误")
+    code = body.code.strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="code 不能为空")
+    added = db.add_mail_code(
+        body.sender.strip(), body.subject.strip(), code, body.mail_time.strip()
+    )
+    return {"ok": True, "added": added}
+
+
+@app.get("/api/mail/codes")
+def mail_codes_list(session: str | None = Cookie(default=None)):
+    require_auth(session)
+    db.cleanup_mail_codes()  # 惰性清理过期验证码
+    return db.list_mail_codes(20)
+
+
+@app.post("/api/mail/codes/poll")
+def mail_codes_poll(session: str | None = Cookie(default=None)):
+    """手动触发一次即时拉取（前端「立即刷新」按钮）。"""
+    require_auth(session)
+    added = []
+    if _mail_fetcher:
+        added = _mail_fetcher.fetch_once()
+    db.cleanup_mail_codes()
+    return {"ok": True, "added": len(added), "enabled": _mail_fetcher is not None}
+
+
+@app.get("/api/mail/codes/unread")
+def mail_codes_unread(session: str | None = Cookie(default=None)):
+    require_auth(session)
+    return db.unread_mail_codes()
+
+
+@app.post("/api/mail/codes/mark-read")
+def mail_codes_mark_read(session: str | None = Cookie(default=None)):
+    require_admin(session)
+    db.mark_mail_codes_read()
+    return {"ok": True}
+
+
+@app.delete("/api/mail/codes/{cid}")
+def mail_codes_delete(cid: int, session: str | None = Cookie(default=None)):
+    require_admin(session)
+    db.delete_mail_code(cid)
+    return {"ok": True}
+
+
+# ---------- 全网搜索代理（Tavily Hikari） ----------
+
+@app.post("/api/search")
+def search_web(body: SearchIn, session: str | None = Cookie(default=None)):
+    """代理搜索请求：key 只存服务器，前端不暴露。"""
+    require_auth(session)
+    q = body.query.strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="query 不能为空")
+    if len(q) > 200:
+        raise HTTPException(status_code=400, detail="query 过长")
+    if not SEARCH_KEY:
+        raise HTTPException(status_code=503, detail="搜索引擎未配置")
+    try:
+        resp = httpx.post(
+            SEARCH_URL,
+            json={
+                "query": q,
+                "max_results": min(body.max_results, 8),
+                "include_answer": body.include_answer,
+            },
+            headers={"Authorization": f"Bearer {SEARCH_KEY}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"搜索服务错误 {e.response.status_code}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"搜索失败: {e}")
 
 
 class NoteIn(BaseModel):

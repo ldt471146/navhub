@@ -1,11 +1,12 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { createWidget } from 'l2d-widget'
 import { Zap, Heart, X, MessageCircle, Tags, CheckCircle2, Target, Lightbulb, HelpCircle, Upload, Send } from 'lucide-vue-next'
 import { api } from '../api'
 
 const props = defineProps({
   isAdmin: { type: Boolean, default: true }, // false = 访客：仅聊天，不能添加
+  newCode: { type: Object, default: null }, // { code, sender } 新验证码提醒
 })
 const emit = defineEmits(['saved'])
 
@@ -50,6 +51,21 @@ function pushBot(text, sites = []) {
   chatMsgs.value.push({ role: 'bot', text, sites: sites || [] })
   say(text)
 }
+
+// ---------- 验证码提醒（由主界面通过 newCode prop 触发） ----------
+function notifyCode(codeInfo) {
+  const text = `🔑 新验证码：${codeInfo.code}${codeInfo.sender ? `（来自 ${codeInfo.sender}）` : ''}`
+  pushBot(text)
+  // 打开面板方便查看
+  panelOpen.value = true
+  panelTab.value = 'chat'
+}
+
+watch(() => props.newCode, (c) => {
+  if (c && c.code) notifyCode(c)
+}, { deep: false })
+
+defineExpose({ notifyCode })
 
 // 本地关键词
 const TIME = ['时间', '几点', '几点了', '现在几点', '报时']

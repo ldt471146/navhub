@@ -1,88 +1,113 @@
-/* NavHub design tokens — White Minimal dual theme (Flat Design, white-first, blue accent) */
+/* ============================================================
+   NavHub design tokens — "Precision Dock" dual theme
+   参考 Linear 设计体系：
+   - 分层近黑表面（Void → Carbon → Obsidian）+ 发丝边框代替重阴影
+   - 单点强调色（保留品牌蓝）做"功能闪光"，克制使用
+   - 宽松间距、精密圆角、spring 缓动
+   ============================================================ */
+
 :root,
 :root[data-theme="light"] {
-  --bg-app: #F7F8FA;
-  --bg-sidebar: #FFFFFF;
+  --bg-app: #EFF1F6;
+  --bg-app-gradient: radial-gradient(120% 90% at 12% -10%, #FBFCFE 0%, #F4F6FB 45%, #EDF0F7 100%);
+  --bg-sidebar: rgba(255, 255, 255, 0.72);
+  --bg-sidebar-solid: #FDFDFE;
   --bg-surface: #FFFFFF;
-  --bg-muted: #F2F4F7;
-  --bg-hover: rgba(16, 24, 40, 0.04);
-  --bg-selected: color-mix(in srgb, var(--primary) 8%, white);
+  --bg-surface-gradient: linear-gradient(180deg, #FFFFFF 0%, #FBFCFE 100%);
+  --bg-muted: #EFF1F5;
+  --bg-hover: rgba(14, 17, 22, 0.05);
+  --bg-selected: color-mix(in srgb, var(--primary) 9%, #FFFFFF);
 
-  --text-primary: #101828;
-  --text-secondary: #475467;
-  --text-tertiary: #98A2B3;
-  --text-success: #039855;
-  --text-warning: #DC6803;
-  --text-danger: #D92D20;
+  --text-primary: #0E1116;
+  --text-secondary: #49505B;
+  --text-tertiary: #8B929E;
+  --text-success: #0E9F6E;
+  --text-warning: #D97706;
+  --text-danger: #E02424;
 
   --primary: #2563EB;
-  --primary-hover: #1D4ED8;
-  --primary-soft: rgba(37, 99, 235, 0.08);
+  --primary-hover: #1D4FC7;
+  --primary-soft: rgba(37, 99, 235, 0.09);
+  --primary-glow: rgba(37, 99, 235, 0.35);
   --primary-foreground: #FFFFFF;
 
-  --border: rgba(16, 24, 40, 0.08);
-  --border-strong: rgba(16, 24, 40, 0.16);
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
-  --shadow-lift: 0 4px 12px rgba(16, 24, 40, 0.08), 0 12px 32px rgba(16, 24, 40, 0.08);
-  --shadow-pop: 0 8px 24px rgba(16, 24, 40, 0.10), 0 24px 64px rgba(16, 24, 40, 0.12);
-  --shadow-glow: 0 0 0 1px rgba(37, 99, 235, 0.12), 0 8px 24px rgba(37, 99, 235, 0.16);
+  --border: rgba(14, 17, 22, 0.10);
+  --border-strong: rgba(14, 17, 22, 0.18);
+  --hairline: rgba(255, 255, 255, 0.9);
+  --shadow-card: 0 1px 1px rgba(14, 17, 22, 0.03), 0 1px 2px rgba(14, 17, 22, 0.03),
+    0 2px 6px rgba(14, 17, 22, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-lift: 0 2px 6px rgba(14, 17, 22, 0.06), 0 22px 44px rgba(14, 17, 22, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --shadow-pop: 0 8px 24px rgba(14, 17, 22, 0.12), 0 28px 72px rgba(14, 17, 22, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --shadow-glow: 0 0 0 1px rgba(37, 99, 235, 0.16), 0 1px 2px rgba(37, 99, 235, 0.10),
+    0 12px 34px rgba(37, 99, 235, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 9px;
+  --radius-md: 13px;
+  --radius-lg: 18px;
   --radius-full: 999px;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --dur-fast: 120ms;
   --dur: 200ms;
-  --dur-slow: 400ms;
+  --dur-slow: 450ms;
 
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "PingFang SC", "Hiragino Sans GB", "Segoe UI", system-ui, sans-serif;
   --tracking-title: -0.02em;
   --tracking-label: 0.02em;
-  --sidebar-width: 240px;
-  --content-padding: 24px;
+  --sidebar-width: 252px;
+  --content-padding: 28px;
 }
 
 :root[data-theme="dark"] {
-  --bg-app: #0F1115;
-  --bg-sidebar: #14161B;
-  --bg-surface: #1B1E24;
-  --bg-muted: #23262E;
+  --bg-app: #08090A;
+  --bg-app-gradient: radial-gradient(120% 100% at 85% -10%, #0E1322 0%, #0A0C12 48%, #070809 100%);
+  --bg-sidebar: rgba(12, 13, 15, 0.78);
+  --bg-sidebar-solid: #0C0D0F;
+  --bg-surface: #101114;
+  --bg-surface-gradient: linear-gradient(180deg, #141619 0%, #0E0F12 100%);
+  --bg-muted: #191B1F;
   --bg-hover: rgba(255, 255, 255, 0.06);
-  --bg-selected: color-mix(in srgb, var(--primary) 16%, #1B1E24);
+  --bg-selected: color-mix(in srgb, var(--primary) 20%, #0F1011);
 
-  --text-primary: #F2F4F7;
-  --text-secondary: #A8B3C0;
-  --text-tertiary: #667085;
-  --text-success: #12B76A;
-  --text-warning: #F79009;
-  --text-danger: #F97066;
+  --text-primary: #F4F5F6;
+  --text-secondary: #ADB3BC;
+  --text-tertiary: #70767F;
+  --text-success: #2FBF7F;
+  --text-warning: #F59E0B;
+  --text-danger: #F87171;
 
-  --primary: #3B82F6;
-  --primary-hover: #60A5FA;
-  --primary-soft: rgba(59, 130, 246, 0.14);
+  --primary: #4E97FF;
+  --primary-hover: #6EABFF;
+  --primary-soft: rgba(78, 151, 255, 0.16);
+  --primary-glow: rgba(78, 151, 255, 0.40);
   --primary-foreground: #FFFFFF;
 
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 3px rgba(0, 0, 0, 0.25);
-  --shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.35);
-  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45), 0 24px 64px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 8px 24px rgba(59, 130, 246, 0.2);
+  --hairline: rgba(255, 255, 255, 0.035);
+  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.30), 0 2px 5px rgba(0, 0, 0, 0.25),
+    0 6px 18px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.42), 0 18px 48px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55), 0 30px 80px rgba(0, 0, 0, 0.60),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-glow: 0 0 0 1px rgba(78, 151, 255, 0.30), 0 1px 2px rgba(0, 0, 0, 0.30),
+    0 14px 40px rgba(78, 151, 255, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 9px;
+  --radius-md: 13px;
+  --radius-lg: 18px;
   --radius-full: 999px;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --dur-fast: 120ms;
   --dur: 200ms;
-  --dur-slow: 400ms;
+  --dur-slow: 450ms;
 
   --tracking-title: -0.02em;
   --tracking-label: 0.02em;
@@ -90,25 +115,35 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --bg-app: #0F1115;
-    --bg-sidebar: #14161B;
-    --bg-surface: #1B1E24;
-    --bg-muted: #23262E;
+    --bg-app: #08090A;
+    --bg-app-gradient: radial-gradient(120% 100% at 85% -10%, #0E1322 0%, #0A0C12 48%, #070809 100%);
+    --bg-sidebar: rgba(12, 13, 15, 0.78);
+    --bg-sidebar-solid: #0C0D0F;
+    --bg-surface: #101114;
+    --bg-surface-gradient: linear-gradient(180deg, #141619 0%, #0E0F12 100%);
+    --bg-muted: #191B1F;
     --bg-hover: rgba(255, 255, 255, 0.06);
-    --bg-selected: color-mix(in srgb, var(--primary) 16%, #1B1E24);
-    --text-primary: #F2F4F7;
-    --text-secondary: #A8B3C0;
-    --text-tertiary: #667085;
-    --text-success: #12B76A;
-    --text-warning: #F79009;
-    --text-danger: #F97066;
-    --primary: #3B82F6;
-    --primary-hover: #60A5FA;
-    --primary-soft: rgba(59, 130, 246, 0.14);
+    --bg-selected: color-mix(in srgb, var(--primary) 20%, #0F1011);
+    --text-primary: #F4F5F6;
+    --text-secondary: #ADB3BC;
+    --text-tertiary: #70767F;
+    --text-success: #2FBF7F;
+    --text-warning: #F59E0B;
+    --text-danger: #F87171;
+    --primary: #4E97FF;
+    --primary-hover: #6EABFF;
+    --primary-soft: rgba(78, 151, 255, 0.16);
+    --primary-glow: rgba(78, 151, 255, 0.40);
     --primary-foreground: #FFFFFF;
     --border: rgba(255, 255, 255, 0.08);
     --border-strong: rgba(255, 255, 255, 0.16);
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 3px rgba(0, 0, 0, 0.25);
-    --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --hairline: rgba(255, 255, 255, 0.035);
+    --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.30), 0 2px 5px rgba(0, 0, 0, 0.25),
+      0 6px 18px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.42), 0 18px 48px rgba(0, 0, 0, 0.46),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --shadow-glow: 0 0 0 1px rgba(78, 151, 255, 0.30), 0 1px 2px rgba(0, 0, 0, 0.30),
+      0 14px 40px rgba(78, 151, 255, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55), 0 30px 80px rgba(0, 0, 0, 0.60);
   }
 }

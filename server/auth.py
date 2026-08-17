@@ -79,3 +79,50 @@ def revoke_session(token: str) -> None:
     conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
     conn.commit()
     conn.close()
+
+
+# ---------- 登录防爆破（C1）：按 IP 失败计数 + 锁定 ----------
+MAX_LOGIN_FAILS = 5
+LOCK_SECONDS = 15 * 60  # 锁定 15 分钟
+
+_login_fails: dict[str, dict] = {}  # ip -> {"fails": int, "locked_until": float}
+
+
+def login_locked(ip: str) -> tuple[bool, float]:
+    """返回 (是否锁定, 剩余秒数)。"""
+    rec = _login_fails.get(ip)
+    if not rec:
+        return False, 0
+    if rec["locked_until"] > time.time():
+        return True, rec["locked_until"] - time.time()
+    return False, 0
+
+
+def record_login_fail(ip: str) -> None:
+    rec = _login_fails.setdefault(ip, {"fails": 0, "locked_until": 0})
+    if rec["locked_until"] > time.time():
+        return
+    rec["fails"] += 1
+    if rec["fails"] >= MAX_LOGIN_FAILS:
+        rec["locked_until"] = time.time() + LOCK_SECONDS
+        rec["fails"] = 0
+    # 防内存膨胀：超过 1024 条时清理已解锁的
+    if len(_login_fails) > 1024:
+        now = time.time()
+        for k in [k for k, v in _login_fails.items() if v["locked_until"] < now]:
+            _login_fails.pop(k, None)
+
+
+def record_login_ok(ip: str) -> None:
+    _login_fails.pop(ip, None)
+
+
+def cleanup_sessions() -> None:
+    """清理过期 session（防止长期堆积）。"""
+    try:
+        conn = _conn()
+        conn.execute("DELETE FROM sessions WHERE expire_at < ?", (time.time(),))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
