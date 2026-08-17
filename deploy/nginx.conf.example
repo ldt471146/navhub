@@ -1,6 +1,6 @@
 # NavHub nginx 反向代理示例（部署时替换 example.com）
 server {
-    server_name nav.example.com;
+    server_name nav.diecast.cloud;
 
     client_max_body_size 2m;
 
@@ -25,6 +25,6 @@ server {
 
     # HTTPS：建议用 certbot 自动签发
     # listen 443 ssl;
-    # ssl_certificate     /etc/letsencrypt/live/nav.example.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/nav.example.com/privkey.pem;
+    # ssl_certificate     /etc/letsencrypt/live/nav.diecast.cloud/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/nav.diecast.cloud/privkey.pem;
 }

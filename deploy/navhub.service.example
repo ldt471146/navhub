@@ -1,24 +1,40 @@
-# NavHub systemd æœåŠ¡ç¤ºä¾‹ï¼ˆéƒ¨ç½²æ—¶æŒ‰éœ€ä¿®æ”¹ï¼‰
-# å®‰è£…ï¼šcp navhub.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now navhub
+# NavHub systemd ·şÎñÊ¾Àı£¨²¿ÊğÊ±°´ĞèĞŞ¸Ä£©
+# °²×°£ºcp navhub.service.example /etc/systemd/system/navhub.service
+#       systemctl daemon-reload && systemctl enable --now navhub
 [Unit]
-Description=NavHub - Personal Navigation Hub
+Description=NavHub - Personal Navigation Hub with AI classification
 After=network.target
 
 [Service]
 Type=simple
+User=root
 WorkingDirectory=/opt/navhub/server
-# è¯·åŠ¡å¿…ä¿®æ”¹ä»¥ä¸‹å¯†ç ä¸ºå¼ºå¯†ç ï¼
+
+# ===== ±ØÌî£º¹ÜÀíÔ±ºÍ·Ã¿ÍÃÜÂë =====
 Environment=NAVHUB_PASSWORD=change_me_admin
-Environment=NAVHUB_VIEWER_PASSWORD=change_me_viewer
+Environment=NAVHUB_VIEWER_PASSWORD=12345678
 Environment=NAVHUB_PORT=8001
-# AI èŠå¤©/åˆ†ç±»ï¼šOpenAI å…¼å®¹æ¥å£ï¼ˆå¯ç•™ç©ºç¦ç”¨ AI åŠŸèƒ½ï¼‰
-# Environment=NAVHUB_AI_BASE_URL=https://your-openai-compatible-endpoint/v1
-# Environment=NAVHUB_AI_MODEL=gpt-4o-mini
-# Environment=NAVHUB_AI_API_KEY=sk-your-key
-# å¤©æ°”åŸå¸‚åæ ‡ï¼ˆopen-meteoï¼Œé»˜è®¤é¦™æ¸¯ï¼‰
-# Environment=NAVHUB_WEATHER_LAT=22.3193
-# Environment=NAVHUB_WEATHER_LON=114.1694
-# Environment=NAVHUB_WEATHER_CITY=é¦™æ¸¯
+
+# ===== AI ÁÄÌì/·ÖÀà£ºOpenAI ¼æÈİ½Ó¿Ú£¨²»ÌîÔò½ûÓÃ AI ¹¦ÄÜ£©=====
+Environment=NAVHUB_AI_BASE_URL=https://api.deepseek.com/v1
+Environment=NAVHUB_AI_MODEL=deepseek-v4-flash
+Environment=NAVHUB_AI_API_KEY=sk-xxxxx
+
+# ===== ÓÊÏäÑéÖ¤Âë×Ô¶¯×¥È¡£ºQQ ÓÊÏä IMAP£¨²»ÌîÔò½ûÓÃ£©=====
+# QQ ÓÊÏä -> ÉèÖÃ -> ÕË»§ -> ¿ªÆô IMAP ·şÎñ -> Éú³ÉÊÚÈ¨Âë
+Environment=NAVHUB_MAIL_USER=your@qq.com
+Environment=NAVHUB_MAIL_CODE=your-imap-auth-code
+Environment=NAVHUB_MAIL_INTERVAL=15
+
+# ===== È«ÍøËÑË÷´úÀí£¨¿ÉÑ¡£¬²»ÌîÔò½ûÓÃÈ«¾ÖËÑË÷£©=====
+Environment=NAVHUB_SEARCH_URL=https://search.diecast.cloud/api/tavily/search
+Environment=NAVHUB_SEARCH_KEY=your-search-key
+
+# ===== ÌìÆø³ÇÊĞ×ø±ê£¨open-meteo£¬Ãâ·ÑÎŞĞè key£©=====
+Environment=NAVHUB_WEATHER_LAT=22.3193
+Environment=NAVHUB_WEATHER_LON=114.1694
+Environment=NAVHUB_WEATHER_CITY=Ïã¸Û
+
 ExecStart=/opt/navhub/server/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8001
 Restart=always
 RestartSec=3
